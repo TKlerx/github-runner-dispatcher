@@ -47,14 +47,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T011 [P] [US1] Write runner-template copy, unique-directory, masked child environment, single-job exit, timeout termination, capacity, and safe-cleanup tests in `internal/runner/manager_test.go`
+- [x] T011 [P] [US1] Write runner-template copy, unique-directory, masked child environment, single-job exit, timeout termination, capacity, and safe-cleanup tests in `internal/runner/manager_test.go`
 - [ ] T012 [P] [US1] Write queued-job matching, case-insensitive label subset, deterministic ordering, and unmatched OS rejection tests in `internal/participant/participant_test.go`
 
 ### Implementation for User Story 1
 
-- [ ] T013 [P] [US1] Implement native runner process start, identity inspection, liveness, termination, and `run.sh` selection in `internal/runner/process_linux.go`
-- [ ] T014 [P] [US1] Implement native runner process start, identity inspection, liveness, termination, and `run.cmd` selection in `internal/runner/process_windows.go`
-- [ ] T015 [US1] Implement atomic manifests, disposable runner copies, JIT environment launch, acquisition timeout, capacity accounting, and bounded cleanup in `internal/runner/manager.go`
+- [x] T013 [P] [US1] Implement native runner process start, identity inspection, liveness, termination, and `run.sh` selection in `internal/runner/process_linux.go`
+- [x] T014 [P] [US1] Implement native runner process start, identity inspection, liveness, termination, and `run.cmd` selection in `internal/runner/process_windows.go`
+- [x] T015 [US1] Implement atomic manifests, disposable runner copies, JIT environment launch, acquisition timeout, capacity accounting, and bounded cleanup in `internal/runner/manager.go`
 - [ ] T016 [US1] Implement polling, label matching, deterministic queued-job selection, JIT creation, and graceful shutdown in `internal/participant/participant.go` and wire normal mode in `cmd/runner-participant/main.go`
 - [ ] T017 [US1] Add a fake-GitHub/fake-runner end-to-end MVP test in `test/integration/participant_test.go`
 
