@@ -101,7 +101,10 @@ directory and update it atomically.
 
 **Rationale**: Manifests let a restarted participant count live children, correlate
 runner names with GitHub jobs, terminate overdue unassigned runners, and retry
-cleanup. No database is needed at the intended scale.
+cleanup. The recorded PID is paired with the operating system's process start marker
+and executable path before any signal is sent, preventing PID reuse from targeting an
+unrelated process. Cleanup unlinks symbolic links and Windows reparse points without
+following them. No database is needed at the intended scale.
 
 **Alternatives considered**: Memory-only state cannot reconcile after restart. A
 database or local daemon protocol is unnecessary for a handful of child processes.

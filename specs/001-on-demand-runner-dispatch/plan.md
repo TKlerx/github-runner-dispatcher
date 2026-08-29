@@ -73,16 +73,21 @@ The runner name contains the participant name and a random suffix. Assignment is
 confirmed when GitHub reports a matching in-progress job with that runner name. An
 unassigned runner is terminated after the acquisition timeout. Completed or dead
 runners have their directory removed. Cleanup failures remain in the manifest and
-are retried before new capacity is offered.
+are retried before new capacity is offered. Recursive cleanup never follows symbolic
+links or Windows reparse points; it removes the link object itself and rejects any
+target whose directory ancestry escapes the configured state root.
 
 ### Recovery
 
 At startup the participant scans only its configured state root. Each manifest is
 reconciled with process liveness and GitHub job state. A live runner counts against
 capacity; a completed/dead runner is cleaned; an overdue unassigned runner is
-terminated. Invalid or unexpected directories are reported but never recursively
-removed. All destructive cleanup targets must resolve below the configured state
-root.
+terminated only after its PID, operating-system-reported process start marker, and
+executable path inside its instance directory all match the manifest. A mismatched or
+unverifiable PID is never signaled and is reported for operator recovery. Invalid or
+unexpected directories are reported but never recursively removed. All destructive
+cleanup targets must resolve below the configured state root without traversing
+symbolic links or Windows reparse points.
 
 ### Configuration and secrets
 
@@ -90,7 +95,8 @@ Configuration is strict YAML: unknown fields and duplicate repository names fail
 validation. The PAT is loaded from a separate file whose path is configured; literal
 tokens in YAML are unsupported. Check mode validates configuration, token access,
 private repository visibility, runner template contents, state-root safety, and
-labels without creating JIT runners or processes.
+labels without creating JIT runners or processes. The template and state-root
+ancestry must not contain symbolic links or Windows reparse points.
 
 ### Packaging and service operation
 

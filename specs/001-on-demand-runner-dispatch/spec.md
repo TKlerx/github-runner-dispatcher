@@ -85,6 +85,8 @@ stranding work, and can understand its local decisions from logs.
 - Authentication expires or the platform rate limit is reached.
 - A Windows participant observes a Linux-only job, or vice versa.
 - Temporary-directory cleanup is interrupted or initially fails.
+- A recorded process ID is reused by an unrelated process before restart reconciliation.
+- A workflow creates a symbolic link or Windows junction inside its temporary work directory.
 
 ## Requirements *(mandatory)*
 
@@ -98,7 +100,7 @@ stranding work, and can understand its local decisions from logs.
 - **FR-006**: Each participant MUST operate independently without a central coordinator, peer discovery, or peer communication.
 - **FR-007**: A participant MUST wait until the job age reaches its local claim delay and MUST re-fetch job state immediately before creating a JIT runner.
 - **FR-008**: Concurrent participants MAY create redundant JIT runners, but the service MUST NOT trigger, rerun, or otherwise duplicate workflow jobs.
-- **FR-009**: Startup and periodic reconciliation MUST discover locally launched runner processes and converge safely without exceeding local capacity.
+- **FR-009**: Startup and periodic reconciliation MUST discover locally launched runner processes and converge safely without exceeding local capacity; before signaling a recorded process, the participant MUST verify its process ID, operating-system-reported start marker, and executable path, and MUST NOT signal an unverifiable or mismatched process.
 - **FR-010**: Each participant MUST use its own fine-grained PAT limited to selected repositories, with Metadata read, Actions read, and Administration write permissions required to observe jobs and create JIT runners.
 - **FR-011**: Participants MUST reject public repositories; the first release MUST support private repositories only.
 - **FR-012**: Logs MUST record observations, eligibility timing, final rechecks, JIT creation, assignment, completion, timeout, and failures while redacting credentials and JIT configuration.
@@ -107,14 +109,14 @@ stranding work, and can understand its local decisions from logs.
 - **FR-015**: Participants MUST tolerate temporary authentication, platform, and runner-launch failures without losing the ability to retry queued work.
 - **FR-016**: The participant service MUST run on supported Windows and Linux hosts and MUST advertise only the host's actual operating-system and architecture labels.
 - **FR-017**: A participant MUST ignore jobs whose required labels do not match the participant, including Linux-only jobs observed by Windows participants.
-- **FR-018**: Failed temporary-directory cleanup MUST be logged and retried during startup reconciliation before new local capacity is offered.
+- **FR-018**: Failed temporary-directory cleanup MUST be logged and retried during startup reconciliation before new local capacity is offered; cleanup MUST remain below the configured state directory and MUST unlink symbolic links and Windows reparse points without traversing them.
 
 ### Key Entities
 
 - **Repository**: An allowlisted private source repository whose workflow work may require a runner.
 - **Participant**: One trusted Windows or Linux machine running the service, including its verified labels, claim delay, and local capacity.
 - **JIT Runner**: A temporary repository-scoped runner created from just-in-time configuration, capable of processing at most one job in its own disposable directory.
-- **Workflow Work**: A queued or active job reported by the hosting platform, including repository, required labels, creation time, and current state.
+- **Workflow Work**: A queued or active job reported by the hosting platform, including repository, required labels, current state, and the participant's local first-seen time used for claim eligibility.
 - **Participation Decision**: The observed job, eligibility time, final state check, local action, reason, timestamps, and outcome used for reconciliation and diagnosis.
 
 ## Success Criteria *(mandatory)*
@@ -122,12 +124,12 @@ stranding work, and can understand its local decisions from logs.
 ### Measurable Outcomes
 
 - **SC-001**: With ten configured repositories and no matching queued work, no JIT runner process remains active after its acquisition timeout.
-- **SC-002**: Matching queued work begins runner activation within the local claim delay plus one polling interval and 30 seconds in at least 99% of healthy observations.
+- **SC-002**: In an automated sample of at least 100 healthy observations, matching queued work begins runner activation within the local claim delay plus one polling interval and 30 seconds in at least 99% of observations; a healthy observation has available local capacity and a successful GitHub observation cycle completing within 30 seconds.
 - **SC-003**: At most the configured number of JIT runners is active on a participant during all tested concurrent-queue scenarios.
 - **SC-004**: When a shorter-delay participant is unavailable, a healthy fallback begins runner activation within its claim delay plus one polling interval and 30 seconds.
-- **SC-005**: Concurrent-participant and restart tests execute each GitHub job at most once and leave no unassigned local runner beyond its acquisition timeout.
+- **SC-005**: Concurrent-participant and restart tests make no workflow trigger or rerun requests, assign at most one fake runner to each simulated GitHub job, and leave no unassigned local runner beyond its acquisition timeout.
 - **SC-006**: All decision and failure logs pass automated secret-redaction checks.
-- **SC-007**: An operator can add an allowlisted repository or a Windows/Linux participant through configuration alone in under ten minutes, excluding the one-time runner software installation.
+- **SC-007**: In a timed quickstart check starting with the binary, runner template, and PAT already installed, an operator can add an allowlisted repository or a Windows/Linux participant through configuration alone and pass `-check` in under ten minutes.
 
 ## Out of Scope
 

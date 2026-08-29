@@ -31,6 +31,10 @@ A slower fallback participant uses the same repository list with a larger local
 `claim_delay`, for example `60s`. Windows paths are normal YAML strings; forward
 slashes are recommended where accepted by Windows.
 
+`runner_template_dir` and `state_dir` must have link-free ancestry: symbolic links
+and Windows reparse points are rejected. Workflow-created links inside a disposable
+work directory are unlinked during cleanup without traversing their targets.
+
 ## Secret contract
 
 - `token_file` points to a file containing only the fine-grained PAT plus optional
@@ -47,8 +51,8 @@ runner-participant -config <path> [-check]
 ```
 
 - `-config` is required.
-- `-check` validates local files, labels, token access, repository visibility, and
-  GitHub permissions without creating JIT runners or child processes.
+- `-check` validates local files and path ancestry, labels, token access, repository
+  visibility, and GitHub permissions without creating JIT runners or child processes.
 - Normal mode runs in the foreground until interrupted.
 - Exit `0`: clean shutdown or successful check.
 - Exit `2`: invalid configuration or local prerequisite.

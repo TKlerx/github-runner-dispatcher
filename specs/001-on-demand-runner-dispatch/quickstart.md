@@ -38,6 +38,10 @@ The command must reject public or inaccessible repositories, mismatched OS/CPU
 labels, unsafe state paths, missing runner files, and insufficient token permissions.
 It must not create a runner in GitHub or start a process.
 
+For the SC-007 usability check, start timing with the binary, clean runner template,
+and PAT already present. Add one repository to the YAML, run `-check`, and record
+whether validation succeeds within ten minutes.
+
 ## 5. Run in the foreground
 
 ```text
@@ -61,4 +65,6 @@ service/task tooling. The project does not install privileged services itself.
 - A Windows participant ignores jobs requiring `Linux`; Linux ignores `Windows`.
 - Restarting the participant during a job does not exceed local capacity.
 - Interrupting cleanup causes the next startup to retry cleanup before offering work.
+- A reused PID or mismatched process identity is reported and never signaled.
+- Cleanup unlinks a workflow-created symlink or Windows junction without traversing it.
 - Logs never contain the PAT or encoded JIT configuration.

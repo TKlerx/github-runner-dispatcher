@@ -61,6 +61,8 @@ configuration.
 | runner_id | integer | Returned by JIT API |
 | runner_name | string | Participant name plus random suffix |
 | process_id | integer | Set after process start |
+| process_start_marker | string | Exact operating-system-reported process birth marker used with PID to prevent PID-reuse mistakes |
+| process_executable | string | Canonical runner executable path inside the instance directory |
 | phase | RunnerPhase | See lifecycle below |
 | created_at | timestamp | UTC |
 | acquisition_deadline | timestamp | UTC |
@@ -82,7 +84,7 @@ preparing -> waiting -> assigned -> exited -> cleaning -> removed
 - `timed_out`: acquisition deadline passed without assignment.
 - `failed`: launch or process failure.
 - `exited`: runner ended after assignment or failure.
-- `cleaning`: process is stopped and recursive deletion is safe.
+- `cleaning`: process is stopped and recursive deletion is safe without following symbolic links or Windows reparse points.
 - `cleanup_failed`: deletion failed and blocks new capacity until retried.
 - `removed`: terminal conceptual state; manifest directory no longer exists.
 

@@ -29,11 +29,11 @@
 
 **Checkpoint**: Configuration and GitHub access can be validated without creating a runner or process.
 
-- [ ] T004 [P] Write strict YAML, duration, path-safety, duplicate-repository, actual-label, and token-file tests in `internal/config/config_test.go`
+- [ ] T004 [P] Write strict YAML, duration, path-safety including symlink/reparse-point ancestry, duplicate-repository, actual-label, and token-file tests in `internal/config/config_test.go`
 - [ ] T005 Implement typed configuration, defaults, aggregate validation, and PAT-file loading in `internal/config/config.go`
 - [ ] T006 [P] Write REST contract tests for private-repository validation, pagination, queued/in-progress run discovery, job labels, final job lookup, JIT creation, permission errors, and secret-free errors in `internal/github/client_test.go`
 - [ ] T007 Implement the bounded standard-library GitHub REST client described by `contracts/github-rest.md` in `internal/github/client.go`
-- [ ] T008 [P] Define observed-job, repository, runner-manifest, phase, and participation-decision types in `internal/participant/types.go` and `internal/runner/manifest.go`
+- [ ] T008 [P] Define observed-job, repository, runner-manifest including process identity, phase, participation-decision, and platform-neutral process-control types in `internal/participant/types.go`, `internal/runner/manifest.go`, and `internal/runner/process.go`
 - [ ] T009 Write CLI check-mode tests proving invalid configuration, public repositories, missing permissions, unsafe paths, and mismatched platform labels fail without POST requests or child processes in `cmd/runner-participant/main_test.go`
 - [ ] T010 Implement `-config` and side-effect-free `-check` behavior with documented exit codes in `cmd/runner-participant/main.go`
 
@@ -52,9 +52,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement atomic manifests, disposable runner copies, JIT environment launch, acquisition timeout, capacity accounting, and bounded cleanup in `internal/runner/manager.go`
-- [ ] T014 [P] [US1] Implement native runner process start, liveness, termination, and `run.sh` selection in `internal/runner/process_linux.go`
-- [ ] T015 [P] [US1] Implement native runner process start, liveness, termination, and `run.cmd` selection in `internal/runner/process_windows.go`
+- [ ] T013 [P] [US1] Implement native runner process start, identity inspection, liveness, termination, and `run.sh` selection in `internal/runner/process_linux.go`
+- [ ] T014 [P] [US1] Implement native runner process start, identity inspection, liveness, termination, and `run.cmd` selection in `internal/runner/process_windows.go`
+- [ ] T015 [US1] Implement atomic manifests, disposable runner copies, JIT environment launch, acquisition timeout, capacity accounting, and bounded cleanup in `internal/runner/manager.go`
 - [ ] T016 [US1] Implement polling, label matching, deterministic queued-job selection, JIT creation, and graceful shutdown in `internal/participant/participant.go` and wire normal mode in `cmd/runner-participant/main.go`
 - [ ] T017 [US1] Add a fake-GitHub/fake-runner end-to-end MVP test in `test/integration/participant_test.go`
 
@@ -70,7 +70,7 @@
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Write fake-clock tests for local first-seen timestamps, claim eligibility, stale observation eviction, and deterministic tie-breaking in `internal/participant/claim_test.go`
+- [ ] T018 [P] [US2] Write fake-clock tests for local first-seen timestamps, claim eligibility, stale observation eviction, deterministic tie-breaking, and at least 100 healthy timing observations meeting SC-002 in `internal/participant/claim_test.go` and `internal/participant/timing_test.go`
 - [ ] T019 [P] [US2] Write final-recheck and redundant-contender tests proving completed/assigned jobs cause no JIT POST and one GitHub job is never retriggered in `internal/participant/race_test.go`
 
 ### Implementation for User Story 2
@@ -91,13 +91,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] Write atomic-manifest and startup-reconciliation tests for waiting, assigned, dead, overdue, malformed, and unknown directories in `internal/runner/reconcile_test.go`
-- [ ] T024 [P] [US3] Write destructive-path containment and interrupted-cleanup retry tests in `internal/runner/cleanup_test.go`
+- [ ] T023 [P] [US3] Write atomic-manifest and startup-reconciliation tests for waiting, assigned, dead, overdue, malformed, unknown directories, reused PIDs, and mismatched or unverifiable process identities in `internal/runner/reconcile_test.go`
+- [ ] T024 [P] [US3] Write destructive-path containment, symlink/junction no-follow, and interrupted-cleanup retry tests in `internal/runner/cleanup_test.go`
 - [ ] T025 [P] [US3] Write rate-limit, `Retry-After`, transient network/5xx backoff, cancellation, and PAT/JIT redaction tests in `internal/github/retry_test.go` and `internal/participant/log_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] Implement atomic manifest persistence and startup reconciliation without deleting outside the configured state root in `internal/runner/manifest.go` and `internal/runner/manager.go`
+- [ ] T026 [US3] Implement atomic manifest persistence and startup reconciliation with PID/start-marker/executable verification and no-follow cleanup confined to the configured state root in `internal/runner/manifest.go` and `internal/runner/manager.go`
 - [ ] T027 [US3] Implement bounded retry scheduling for GitHub rate limits and transient failures in `internal/github/client.go`
 - [ ] T028 [US3] Implement structured participation-decision logging and centralized secret redaction in `internal/participant/log.go`
 - [ ] T029 [US3] Add restart-during-waiting, restart-during-assignment, and cleanup-recovery scenarios in `test/integration/participant_test.go`
@@ -110,9 +110,9 @@
 
 **Purpose**: Publish usable artifacts and execute the complete quality gate.
 
-- [ ] T030 [P] Document Linux systemd and Windows startup examples, PAT setup, runner-template updates, and trusted-host limitations in `docs/operations.md` and `SECURITY.md`
+- [ ] T030 [P] Document Linux systemd and Windows startup examples, PAT setup, runner-template updates, trusted-host limitations, and the timed SC-007 onboarding check in `docs/operations.md` and `SECURITY.md`
 - [ ] T031 [P] Add reproducible `linux-amd64` and `windows-amd64` release builds with checksums in `.github/workflows/release.yml`
-- [ ] T032 Run `gofmt`, `go vet`, `go test -race ./...`, both target builds, secret-pattern scans, and the scenarios in `specs/001-on-demand-runner-dispatch/quickstart.md`; record any operational corrections in `README.md`
+- [ ] T032 Run `gofmt`, `go vet`, `go test -race ./...`, both target builds, secret-pattern scans, the SC-002 timing test, and the timed SC-007 scenario in `specs/001-on-demand-runner-dispatch/quickstart.md`; record any operational corrections in `README.md`
 
 ---
 
@@ -132,7 +132,7 @@
 - T002 and T003 can run alongside module initialization.
 - T004, T006, and T008 touch separate foundational packages.
 - T011 and T012 can be written in parallel before User Story 1 implementation.
-- Linux and Windows process implementations T014 and T015 are independent.
+- Linux and Windows process implementations T013 and T014 are independent after T008 defines their shared contract; T015 depends on both.
 - T018 and T019 can be written in parallel before claim implementation.
 - T023, T024, and T025 cover independent recovery boundaries.
 - Documentation and release work T030 and T031 are independent.
@@ -142,8 +142,8 @@
 ```text
 T011: runner lifecycle tests in internal/runner/manager_test.go
 T012: job matching tests in internal/participant/participant_test.go
-T014: Linux process control in internal/runner/process_linux.go
-T015: Windows process control in internal/runner/process_windows.go
+T013: Linux process control in internal/runner/process_linux.go
+T014: Windows process control in internal/runner/process_windows.go
 ```
 
 ## Implementation Strategy
