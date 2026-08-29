@@ -8,18 +8,23 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 
 	"github.com/TKlerx/github-runner-dispatcher/internal/config"
 	ghapi "github.com/TKlerx/github-runner-dispatcher/internal/github"
+	"github.com/TKlerx/github-runner-dispatcher/internal/participant"
+	"github.com/TKlerx/github-runner-dispatcher/internal/runner"
 	"github.com/TKlerx/github-runner-dispatcher/internal/setup"
 )
 
 var errGitHubCheck = errors.New("GitHub validation failed")
 
 func main() {
-	os.Exit(run(context.Background(), os.Args[1:], os.Stdin, os.Stdout, os.Stderr, setup.CLIExecutor{}))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	os.Exit(run(ctx, os.Args[1:], os.Stdin, os.Stdout, os.Stderr, setup.CLIExecutor{}))
 }
 
 func run(ctx context.Context, args []string, input io.Reader, output, errorOutput io.Writer, executor setup.Executor) int {
@@ -42,10 +47,6 @@ func run(ctx context.Context, args []string, input io.Reader, output, errorOutpu
 		}
 		return 0
 	}
-	if !*check {
-		fmt.Fprintln(errorOutput, "normal mode is not implemented yet")
-		return 4
-	}
 	if err := checkConfiguration(ctx, *configPath); err != nil {
 		fmt.Fprintln(errorOutput, err)
 		if errors.Is(err, errGitHubCheck) {
@@ -53,8 +54,39 @@ func run(ctx context.Context, args []string, input io.Reader, output, errorOutpu
 		}
 		return 2
 	}
-	fmt.Fprintln(output, "configuration, local prerequisites, private repositories, and GitHub permissions are valid")
+	if *check {
+		fmt.Fprintln(output, "configuration, local prerequisites, private repositories, and GitHub permissions are valid")
+		return 0
+	}
+	if err := runParticipant(ctx, *configPath); err != nil {
+		fmt.Fprintln(errorOutput, err)
+		return 4
+	}
 	return 0
+}
+
+func runParticipant(ctx context.Context, path string) error {
+	cfg, err := config.Load(path)
+	if err != nil {
+		return err
+	}
+	token, err := config.LoadToken(cfg.TokenFile)
+	if err != nil {
+		return err
+	}
+	client, err := ghapi.NewClient(cfg.GitHubAPIURL, cfg.GitHubAPIVersion, token, http.DefaultClient)
+	if err != nil {
+		return err
+	}
+	manager, err := runner.NewManager(cfg.StateDir, cfg.RunnerTemplateDir, cfg.Capacity, cfg.AcquisitionTimeout, runner.NativeProcessController{})
+	if err != nil {
+		return err
+	}
+	service, err := participant.NewService(cfg, client, manager)
+	if err != nil {
+		return err
+	}
+	return service.Run(ctx)
 }
 
 func checkConfiguration(ctx context.Context, path string) error {
