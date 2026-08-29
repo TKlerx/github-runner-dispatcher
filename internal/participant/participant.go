@@ -35,13 +35,19 @@ type Service struct {
 	runners RunnerManager
 	mu      sync.Mutex
 	active  map[string]struct{}
+	claims  *claimTracker
+	now     func() time.Time
 }
 
 func NewService(cfg config.Config, github GitHubAPI, runners RunnerManager) (*Service, error) {
 	if github == nil || runners == nil {
 		return nil, errors.New("GitHub client and runner manager are required")
 	}
-	return &Service{config: cfg, github: github, runners: runners, active: map[string]struct{}{}}, nil
+	staleAfter := 10 * cfg.PollInterval
+	if staleAfter < time.Minute {
+		staleAfter = time.Minute
+	}
+	return &Service{config: cfg, github: github, runners: runners, active: map[string]struct{}{}, claims: newClaimTracker(10_000, staleAfter), now: time.Now}, nil
 }
 
 func (service *Service) Run(ctx context.Context) error {
@@ -62,7 +68,9 @@ func (service *Service) PollOnce(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	for _, job := range matchingQueuedJobs(jobs, service.config.Labels) {
+	matching := matchingQueuedJobs(jobs, service.config.Labels)
+	now := service.now()
+	for _, job := range eligibleClaims(now, service.config.ClaimDelay, service.claims.observe(now, matching)) {
 		if service.localCapacity() < 1 || service.isActive(job) {
 			continue
 		}

@@ -70,14 +70,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Write fake-clock tests for local first-seen timestamps, claim eligibility, stale observation eviction, deterministic tie-breaking, and at least 100 healthy timing observations meeting SC-002 in `internal/participant/claim_test.go` and `internal/participant/timing_test.go`
-- [ ] T019 [P] [US2] Write final-recheck and redundant-contender tests proving completed/assigned jobs cause no JIT POST and one GitHub job is never retriggered in `internal/participant/race_test.go`
+- [x] T018 [P] [US2] Write fake-clock tests for local first-seen timestamps, claim eligibility, stale observation eviction, deterministic tie-breaking, and at least 100 healthy timing observations meeting SC-002 in `internal/participant/claim_test.go` and `internal/participant/timing_test.go`
+- [x] T019 [P] [US2] Write final-recheck and redundant-contender tests proving completed/assigned jobs cause no JIT POST and one GitHub job is never retriggered in `internal/participant/race_test.go`
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implement bounded first-seen tracking, claim-delay eligibility, stale eviction, and deterministic ordering in `internal/participant/claim.go`
-- [ ] T021 [US2] Add immediate final job recheck and capacity recheck before JIT creation in `internal/participant/participant.go`
-- [ ] T022 [US2] Add two-participant preference, fallback, and harmless redundant-listener integration scenarios in `test/integration/participant_test.go`
+- [x] T020 [US2] Implement bounded first-seen tracking, claim-delay eligibility, stale eviction, and deterministic ordering in `internal/participant/claim.go`
+- [x] T021 [US2] Add immediate final job recheck and capacity recheck before JIT creation in `internal/participant/participant.go`
+- [x] T022 [US2] Add two-participant preference, fallback, and harmless redundant-listener integration scenarios in `test/integration/participant_test.go`
 
 **Checkpoint**: User Story 2 demonstrates best-effort machine preference without coordination.
 
