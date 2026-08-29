@@ -1,58 +1,65 @@
 <!--
 Sync Impact Report
-- Version change: template -> 1.0.0
-- Added principles: Minimal Controller, Least Privilege, Deterministic Dispatch,
-  Recoverable Operation, Tests Define Done
-- Added sections: Security and Runtime Constraints, Development Workflow
-- Templates updated: plan-template.md, tasks-template.md
-- Deferred items: none
+- Version change: 1.0.0 -> 2.0.0
+- Modified principles: Minimal Controller -> Minimal Participant;
+  Deterministic Dispatch -> Independent Participation;
+  Recoverable Operation -> Recoverable Ephemeral Execution
+- Refined principle: Least Privilege
+- Unchanged principle: Tests Define Done
+- Added sections: none
+- Removed sections: none
+- Templates updated: .specify/templates/plan-template.md,
+  .specify/templates/tasks-template.md
+- Runtime guidance updated: README.md, SECURITY.md
+- Follow-up TODOs: none
 -->
 # GitHub Runner Dispatcher Constitution
 
 ## Core Principles
 
-### I. Minimal Controller
-The project MUST solve runner activation and deactivation only. It MUST reuse the
-hosting platform's workflow filters, registered runner software, operating-system
-service manager, and standard authentication mechanisms. Features unrelated to
-dispatching MUST be rejected until a measured need exists.
+### I. Minimal Participant
+The project MUST only observe queued GitHub Actions jobs and offer temporary JIT
+runner capacity for matching jobs. It MUST reuse GitHub's job assignment, official
+runner software, and native process management. It MUST NOT trigger, retry, cancel,
+or execute workflow logic itself.
 
 ### II. Least Privilege
-Credentials MUST be restricted to explicitly configured repositories and the
-minimum read permissions needed to observe workflow work. Remote control MUST run
-as an unprivileged account and MUST only permit control of allowlisted runner
-services. Secrets MUST never appear in configuration committed to source control,
-logs, process arguments, or error messages.
+Each participant MUST use its own fine-grained PAT restricted to explicitly selected
+private repositories. Permissions MUST be limited to Metadata read, Actions read,
+and Administration write as required by GitHub's JIT runner API. Secrets and encoded
+JIT configuration MUST never appear in committed configuration, logs, process
+arguments under project control, or error messages.
 
-### III. Deterministic Dispatch
-For a given host, at most one repository runner MAY be active by default. Work MUST
-be selected deterministically from the configured queue. Host priority and fallback
-timeouts MUST be explicit. A job already accepted by a fallback host MUST never be
-preempted when a preferred host returns.
+### III. Independent Participation
+Participants MUST operate without a central coordinator, distributed lock, peer
+discovery, or peer communication. Local claim delay and capacity MUST be explicit.
+Job state MUST be rechecked immediately before offering capacity. Redundant JIT
+runners are acceptable, but the service MUST never duplicate a workflow job.
 
-### IV. Recoverable Operation
-The controller MUST reconcile actual runner-service state after startup, restart,
-network interruption, and partial failure. Repeated polling and control actions MUST
-be idempotent. Failure to reach a preferred host MUST not strand work when an
-allowlisted fallback is available.
+### IV. Recoverable Ephemeral Execution
+Every JIT runner MUST process at most one job in a unique temporary directory.
+Participants MUST reconcile locally launched processes after startup or interruption,
+enforce local capacity, terminate unassigned runners after timeout, and retry failed
+cleanup before offering new capacity.
 
 ### V. Tests Define Done
 Every state transition, security boundary, and failure path MUST have an automated
-test. Tests MUST cover queued work, active work, idle shutdown, host fallback,
-restart reconciliation, duplicate observations, and command allowlisting. A change
-is not complete while its tests or static checks fail.
+test. Tests MUST cover matching queued work, label rejection, claim delay, final
+recheck, JIT creation, capacity, redundant contenders, restart reconciliation,
+timeouts, cleanup, and secret redaction on Windows and Linux where behavior differs.
+A change is not complete while its tests or static checks fail.
 
 ## Security and Runtime Constraints
 
-- Private repositories are the default and public repositories MUST require an
-  explicit opt-in with a visible warning.
-- Repository names, host names, service names, timing values, and concurrency limits
-  MUST be configuration rather than project-specific constants.
-- The controller MUST not execute workflow code itself; it only controls registered
-  runner services.
+- The first release MUST support private repositories only.
+- Repository names, participant identity, labels, timing values, and capacity MUST be
+  configuration rather than project-specific constants.
+- Participants MUST advertise only their actual operating system and architecture.
+- Runner software MUST be installed once per participant; repositories MUST NOT need
+  persistent runner registration or repository-specific services.
 - Runtime dependencies MUST remain minimal and justified. Native platform features
   take precedence over new infrastructure.
-- Logs MUST be sufficient to reconstruct dispatch decisions without exposing secrets.
+- Logs MUST reconstruct local participation decisions without exposing secrets.
 
 ## Development Workflow
 
@@ -69,4 +76,4 @@ affected templates and specifications. Every plan and review MUST verify the fiv
 core principles. Complexity exceptions MUST name the rejected simpler alternative
 and the evidence that requires the exception.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-29 | **Last Amended**: 2026-08-29
+**Version**: 2.0.0 | **Ratified**: 2026-08-29 | **Last Amended**: 2026-08-29

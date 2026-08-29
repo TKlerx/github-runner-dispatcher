@@ -40,11 +40,11 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- [ ] Scope is limited to runner dispatch and reuses native platform capabilities.
-- [ ] Credentials and remote control follow least privilege and explicit allowlists.
-- [ ] Dispatch order, concurrency, priority, fallback, and non-preemption are deterministic.
-- [ ] Startup and failure recovery are idempotent and observable.
-- [ ] State transitions and security boundaries have automated test coverage.
+- [ ] Scope is limited to observing jobs and offering official JIT runner capacity.
+- [ ] Per-participant credentials follow least privilege and explicit private-repository selection.
+- [ ] Participants remain independent; claim delay, final recheck, labels, and local capacity are explicit.
+- [ ] One-job temporary execution, restart reconciliation, timeouts, and cleanup are recoverable.
+- [ ] State transitions, security boundaries, and Windows/Linux differences have automated test coverage.
 
 ## Project Structure
 

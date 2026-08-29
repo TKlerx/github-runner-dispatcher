@@ -9,7 +9,8 @@ unpatched exploit.
 ## Operational warning
 
 Self-hosted runners execute repository workflow code on operator-controlled machines.
-Use this project only with repositories and contributors you trust. Keep public
-repositories disabled unless the risk is explicitly accepted, restrict credentials
-to selected repositories and read-only workflow metadata, and never grant runner
-jobs unrestricted host access.
+Use this project only with private repositories and contributors you trust. Give
+each participant a separate fine-grained PAT limited to selected repositories and
+the Metadata read, Actions read, and Administration write permissions required for
+JIT runners. Treat JIT configuration as a secret and assume workflow jobs can modify
+their host outside the temporary work directory.
