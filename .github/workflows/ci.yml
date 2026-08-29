@@ -39,13 +39,37 @@ jobs:
           }
 
       - name: Vet
-        run: go vet ./...
+        shell: pwsh
+        run: |
+          if (@(go list ./...).Count -eq 0) {
+            Write-Host "No Go packages yet; skipping vet."
+            exit 0
+          }
+          go vet ./...
 
       - name: Unit tests
-        run: go test -count=1 ./...
+        shell: pwsh
+        run: |
+          if (@(go list ./...).Count -eq 0) {
+            Write-Host "No Go packages yet; skipping unit tests."
+            exit 0
+          }
+          go test -count=1 ./...
 
       - name: Race tests
-        run: go test -race -count=1 ./...
+        shell: pwsh
+        run: |
+          if (@(go list ./...).Count -eq 0) {
+            Write-Host "No Go packages yet; skipping race tests."
+            exit 0
+          }
+          go test -race -count=1 ./...
 
       - name: Build
-        run: go build ./...
+        shell: pwsh
+        run: |
+          if (@(go list ./...).Count -eq 0) {
+            Write-Host "No Go packages yet; skipping build."
+            exit 0
+          }
+          go build ./...
