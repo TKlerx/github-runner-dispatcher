@@ -19,6 +19,8 @@ local JSON manifest supports restart reconciliation and cleanup.
 
 **Primary Dependencies**: Go standard library; `go.yaml.in/yaml/v4` for strict YAML configuration
 
+**Setup Dependency**: Authenticated GitHub CLI, required only for interactive repository discovery
+
 **Storage**: Local filesystem only: YAML configuration, PAT file, transient runner directories, and atomic JSON runner manifests
 
 **Testing**: Go `testing`, `httptest`, fake clock/process interfaces, race detector, and Windows/Linux CI builds
@@ -37,17 +39,39 @@ local JSON manifest supports restart reconciliation and cleanup.
 
 *GATE: Passed before research and re-checked after design.*
 
-- [x] Scope is limited to observing jobs and offering official JIT runner capacity.
-- [x] Per-participant credentials follow least privilege and explicit private-repository selection.
+- [x] Runtime scope is limited to observing jobs and offering official JIT runner capacity; setup is read-only against GitHub.
+- [x] Per-participant credentials follow least privilege and explicit private-repository selection; setup does not reuse GitHub CLI authentication as the participant token.
 - [x] Participants remain independent; claim delay, final recheck, labels, and local capacity are explicit.
 - [x] One-job temporary execution, restart reconciliation, timeouts, and cleanup are recoverable.
-- [x] State transitions, security boundaries, and Windows/Linux differences have automated test coverage.
+- [x] State transitions, setup/configuration mutation, security boundaries, and Windows/Linux differences have automated test coverage.
 
 The sole non-standard runtime dependency is the maintained YAML parser required for
 a human-editable strict configuration contract. GitHub access, logging, HTTP,
 process execution, manifests, scheduling, and testing use the standard library.
 
 ## Design
+
+### Repository and PAT setup
+
+Setup mode is a one-time convenience and the only feature that depends on GitHub CLI.
+It executes `gh api --paginate --slurp` against
+`/user/repos?visibility=private&affiliation=owner&per_page=100`, sorts results by full
+name, and queries each repository's Actions workflows to mark entries with no active
+workflow. Archived and no-active-workflow repositories remain selectable because CI
+may be added or enabled later.
+
+Because setup starts from a copied example or machine config, an existing file always
+causes a warning and defaults to cancellation. The operator may keep its current
+allowlist without a write—useful after copying NAS configuration to another host—or
+explicitly replace only the repository list. Replacement is shown for confirmation
+and written atomically while preserving every other typed setting.
+
+The standard library builds a fine-grained-PAT form URL with the common repository
+owner as `target_name` and `actions=read`, `administration=write`, and `metadata=read`.
+GitHub does not support preselecting individual repositories through URL parameters,
+so setup prints the selected names as a checklist for the browser form. Setup never
+retrieves or accepts the resulting token. Repositories with different owners are
+rejected because one fine-grained PAT has one resource owner.
 
 ### Observation and selection
 
@@ -137,11 +161,14 @@ internal/
 ├── participant/
 │   ├── participant.go
 │   └── participant_test.go
-└── runner/
-    ├── manager.go
-    ├── process_linux.go
-    ├── process_windows.go
-    └── manager_test.go
+├── runner/
+│   ├── manager.go
+│   ├── process_linux.go
+│   ├── process_windows.go
+│   └── manager_test.go
+└── setup/
+    ├── setup.go
+    └── setup_test.go
 
 test/
 └── integration/
@@ -152,7 +179,7 @@ go.mod
 go.sum
 ```
 
-**Structure Decision**: Use one Go module and four internal packages. Tests remain
+**Structure Decision**: Use one Go module and five internal packages. Tests remain
 next to their packages except for the single end-to-end fake-GitHub integration
 test. No interface layer is introduced unless required to replace time, HTTP, or
 process execution in tests.

@@ -14,3 +14,7 @@ each participant a separate fine-grained PAT limited to selected repositories an
 the Metadata read, Actions read, and Administration write permissions required for
 JIT runners. Treat JIT configuration as a secret and assume workflow jobs can modify
 their host outside the temporary work directory.
+
+Repository discovery may use GitHub CLI during setup, but the service must never
+reuse, print, or persist GitHub CLI's authentication token. The participant PAT is
+created manually from the generated GitHub form and stored only in `token_file`.

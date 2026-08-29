@@ -109,6 +109,25 @@ following them. No database is needed at the intended scale.
 **Alternatives considered**: Memory-only state cannot reconcile after restart. A
 database or local daemon protocol is unnecessary for a handful of child processes.
 
+## Repository selection and PAT bootstrap
+
+**Decision**: Use the operator's existing GitHub CLI authentication only in setup
+mode to paginate owned private repositories and collect a console multi-selection.
+Generate GitHub's fine-grained-PAT form URL with the resource owner and required
+permissions, then print the selected repositories as a manual browser checklist.
+
+**Rationale**: GitHub CLI already handles interactive authentication and paginated
+API calls. GitHub's PAT URL supports `target_name`, `actions`, `administration`, and
+`metadata`, but it does not support preselecting individual repositories. Keeping
+this dependency out of normal service execution preserves the single-binary runtime.
+One read-only workflow-list request per repository marks entries with no active CI;
+that status is advisory because workflows may be added later. Existing configuration
+is never silently overwritten and may supply its allowlist directly for another host.
+
+**Alternatives considered**: Creating a PAT programmatically is unsupported. Direct
+OAuth or device-flow code duplicates GitHub CLI, while separate shell implementations
+for Windows and Linux add maintenance without improving setup.
+
 ## Service installation
 
 **Decision**: Ship a foreground process; document systemd and Windows service/task

@@ -17,6 +17,7 @@
 - Q: How should each participant authenticate to GitHub? → A: Each participant uses its own fine-grained PAT restricted to the selected repositories.
 - Q: How should consecutive jobs be isolated on a participant? → A: Each JIT runner uses a unique temporary runner and work directory that is removed after exit.
 - Q: Which repository visibility should the first release support? → A: Private repositories only.
+- Q: How should an operator choose repositories and create the machine PAT? → A: A setup workflow lists private repositories owned by the authenticated user, writes the operator's selection to configuration, and generates a prefilled fine-grained-PAT form plus a repository checklist; GitHub still requires manual confirmation.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -36,6 +37,8 @@ and deregisters after completing the job.
 1. **Given** no runner is active, **When** a label-compatible job is queued for an allowlisted repository and the local claim delay elapses, **Then** a JIT runner starts within one polling interval plus 30 seconds.
 2. **Given** a JIT runner accepts a job, **When** the job completes, **Then** that runner exits, cannot accept a second job, and its temporary directory is removed.
 3. **Given** a JIT runner receives no job before the acquisition timeout, **When** no matching work remains queued, **Then** the participant terminates it.
+4. **Given** the operator is authenticated to GitHub for setup, **When** setup runs, **Then** it lists all private repositories owned by that account, marks repositories with no active workflows, lets the operator select multiple repositories, writes exactly that allowlist, and provides a PAT form link plus the same repository checklist without creating or exposing a token.
+5. **Given** the configuration file already exists, **When** setup starts, **Then** it warns before mutation and defaults to cancellation while allowing the operator to keep the existing allowlist unchanged or explicitly replace only that allowlist.
 
 ---
 
@@ -87,6 +90,9 @@ stranding work, and can understand its local decisions from logs.
 - Temporary-directory cleanup is interrupted or initially fails.
 - A recorded process ID is reused by an unrelated process before restart reconciliation.
 - A workflow creates a symbolic link or Windows junction inside its temporary work directory.
+- Setup authentication is missing, expired, or belongs to an account with no owned private repositories.
+- The repository list spans multiple result pages or contains archived repositories.
+- A private repository has no workflow or has only disabled workflows.
 
 ## Requirements *(mandatory)*
 
@@ -110,6 +116,8 @@ stranding work, and can understand its local decisions from logs.
 - **FR-016**: The participant service MUST run on supported Windows and Linux hosts and MUST advertise only the host's actual operating-system and architecture labels.
 - **FR-017**: A participant MUST ignore jobs whose required labels do not match the participant, including Linux-only jobs observed by Windows participants.
 - **FR-018**: Failed temporary-directory cleanup MUST be logged and retried during startup reconciliation before new local capacity is offered; cleanup MUST remain below the configured state directory and MUST unlink symbolic links and Windows reparse points without traversing them.
+- **FR-019**: A setup workflow MUST enumerate all private repositories owned by the authenticated user, including paginated results, identify archived repositories and repositories without active workflows, and support multiple selection. If the configuration exists, setup MUST warn and default to cancellation, offer to keep the existing allowlist without writing, or replace only the allowlist after explicit confirmation.
+- **FR-020**: After repository selection, setup MUST generate a prefilled fine-grained-PAT creation link for the selected repositories' common resource owner and the required permissions, MUST list the repositories that GitHub requires the operator to select manually, and MUST NOT create, read, print, or persist a token.
 
 ### Key Entities
 
@@ -130,6 +138,7 @@ stranding work, and can understand its local decisions from logs.
 - **SC-005**: Concurrent-participant and restart tests make no workflow trigger or rerun requests, assign at most one fake runner to each simulated GitHub job, and leave no unassigned local runner beyond its acquisition timeout.
 - **SC-006**: All decision and failure logs pass automated secret-redaction checks.
 - **SC-007**: In a timed quickstart check starting with the binary, runner template, and PAT already installed, an operator can add an allowlisted repository or a Windows/Linux participant through configuration alone and pass `-check` in under ten minutes.
+- **SC-008**: Setup tests covering more than one result page write every selected repository exactly once, write no unselected repository, mark archived and no-active-workflow choices before confirmation, preserve existing configuration on cancellation or keep, and generate a link containing the correct resource owner and required permissions without token material.
 
 ## Out of Scope
 

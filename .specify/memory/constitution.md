@@ -1,11 +1,7 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 -> 2.0.0
-- Modified principles: Minimal Controller -> Minimal Participant;
-  Deterministic Dispatch -> Independent Participation;
-  Recoverable Operation -> Recoverable Ephemeral Execution
-- Refined principle: Least Privilege
-- Unchanged principle: Tests Define Done
+- Version change: 2.0.0 -> 2.1.0
+- Modified principles: Minimal Participant, Least Privilege, Tests Define Done
 - Added sections: none
 - Removed sections: none
 - Templates updated: .specify/templates/plan-template.md,
@@ -18,17 +14,20 @@ Sync Impact Report
 ## Core Principles
 
 ### I. Minimal Participant
-The project MUST only observe queued GitHub Actions jobs and offer temporary JIT
-runner capacity for matching jobs. It MUST reuse GitHub's job assignment, official
-runner software, and native process management. It MUST NOT trigger, retry, cancel,
-or execute workflow logic itself.
+The runtime participant MUST only observe queued GitHub Actions jobs and offer
+temporary JIT runner capacity for matching jobs. It MUST reuse GitHub's job
+assignment, official runner software, and native process management. It MUST NOT
+trigger, retry, cancel, or execute workflow logic itself. Setup tooling MAY read
+repository and workflow metadata and generate local configuration or a PAT form URL,
+but MUST NOT create tokens or mutate GitHub state.
 
 ### II. Least Privilege
 Each participant MUST use its own fine-grained PAT restricted to explicitly selected
 private repositories. Permissions MUST be limited to Metadata read, Actions read,
 and Administration write as required by GitHub's JIT runner API. Secrets and encoded
 JIT configuration MUST never appear in committed configuration, logs, process
-arguments under project control, or error messages.
+arguments under project control, or error messages. Setup MUST NOT reuse, print, or
+persist GitHub CLI authentication as the participant credential.
 
 ### III. Independent Participation
 Participants MUST operate without a central coordinator, distributed lock, peer
@@ -47,7 +46,9 @@ Every state transition, security boundary, and failure path MUST have an automat
 test. Tests MUST cover matching queued work, label rejection, claim delay, final
 recheck, JIT creation, capacity, redundant contenders, restart reconciliation,
 timeouts, cleanup, and secret redaction on Windows and Linux where behavior differs.
-A change is not complete while its tests or static checks fail.
+Setup tests MUST cover selection pagination, existing-config protection, workflow
+status warnings, and secret-free PAT URL generation. A change is not complete while
+its tests or static checks fail.
 
 ## Security and Runtime Constraints
 
@@ -58,7 +59,8 @@ A change is not complete while its tests or static checks fail.
 - Runner software MUST be installed once per participant; repositories MUST NOT need
   persistent runner registration or repository-specific services.
 - Runtime dependencies MUST remain minimal and justified. Native platform features
-  take precedence over new infrastructure.
+  take precedence over new infrastructure. GitHub CLI MAY be required for setup but
+  MUST NOT be required during normal participant execution.
 - Logs MUST reconstruct local participation decisions without exposing secrets.
 
 ## Development Workflow
@@ -76,4 +78,4 @@ affected templates and specifications. Every plan and review MUST verify the fiv
 core principles. Complexity exceptions MUST name the rejected simpler alternative
 and the evidence that requires the exception.
 
-**Version**: 2.0.0 | **Ratified**: 2026-08-29 | **Last Amended**: 2026-08-29
+**Version**: 2.1.0 | **Ratified**: 2026-08-29 | **Last Amended**: 2026-08-29

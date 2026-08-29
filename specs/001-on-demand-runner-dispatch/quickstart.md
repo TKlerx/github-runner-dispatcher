@@ -2,11 +2,29 @@
 
 This quickstart describes the intended v1 workflow after implementation.
 
-## 1. Prepare GitHub access
+## 1. Select repositories and prepare GitHub access
 
-Create a separate fine-grained PAT for this machine. Select only the private
-repositories it may serve and grant Metadata read, Actions read, and Administration
-write. Save only the token in a machine-local file.
+Copy `config.example.yml` to `config.yml` and set the participant name, labels, local
+paths, claim delay, and capacity. The token file does not need to exist yet.
+
+Authenticate GitHub CLI on this machine or another trusted setup machine, then run:
+
+```text
+runner-participant -config config.yml -setup
+```
+
+Select the private repositories this participant may serve. Setup writes the YAML
+allowlist and prints a prefilled fine-grained-PAT form URL. Open it, choose "Only
+select repositories," manually select every repository in the printed checklist,
+and generate the token. GitHub's URL format cannot preselect repositories. Save only
+the resulting token in the configured machine-local token file.
+
+If `config.yml` already exists, setup warns and defaults to cancellation. Choose to
+keep its allowlist unchanged—useful after copying NAS configuration to `jan-cachy`—or
+explicitly replace only the repository list. Before using a copied file, update its
+participant name, OS/architecture labels, paths, and claim delay for the new machine.
+Repositories with no active workflow are marked but remain selectable; selecting one
+is harmless and only adds idle polling until CI is added or enabled.
 
 ## 2. Prepare the official runner template
 
@@ -14,11 +32,10 @@ Download the official GitHub Actions runner matching this machine, extract it on
 and do not run `config.sh` or `config.cmd`. Keep this directory clean and update it
 when GitHub releases required runner updates.
 
-## 3. Configure the participant
+## 3. Finish participant configuration
 
-Copy `config.example.yml`, list the private repositories, set labels to the machine's
-actual OS and architecture, and point `token_file`, `runner_template_dir`, and
-`state_dir` at machine-local paths.
+Confirm that `token_file`, `runner_template_dir`, and `state_dir` point at the prepared
+machine-local paths.
 
 Use shorter claim delays for preferred machines:
 
@@ -59,6 +76,11 @@ service/task tooling. The project does not install privileged services itself.
 
 ## Verification scenarios
 
+- Setup discovers private repositories across multiple pages, marks archived entries,
+  marks repositories with no active workflows, and writes only the selected repositories.
+- Cancelling setup or keeping a copied allowlist leaves the config byte-for-byte unchanged.
+- The generated PAT link contains the common repository owner and only Metadata read,
+  Actions read, and Administration write permissions.
 - With no queued jobs, no official runner process is present.
 - With two participants, the shorter-delay machine normally accepts the job.
 - With the preferred participant offline, the delayed participant accepts it.

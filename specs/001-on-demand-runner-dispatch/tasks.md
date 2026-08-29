@@ -29,13 +29,13 @@
 
 **Checkpoint**: Configuration and GitHub access can be validated without creating a runner or process.
 
-- [ ] T004 [P] Write strict YAML, duration, path-safety including symlink/reparse-point ancestry, duplicate-repository, actual-label, and token-file tests in `internal/config/config_test.go`
+- [ ] T004 [P] Write strict YAML, duration, path-safety including symlink/reparse-point ancestry, duplicate-repository, common-owner, actual-label, and token-file tests in `internal/config/config_test.go`
 - [ ] T005 Implement typed configuration, defaults, aggregate validation, and PAT-file loading in `internal/config/config.go`
 - [ ] T006 [P] Write REST contract tests for private-repository validation, pagination, queued/in-progress run discovery, job labels, final job lookup, JIT creation, permission errors, and secret-free errors in `internal/github/client_test.go`
 - [ ] T007 Implement the bounded standard-library GitHub REST client described by `contracts/github-rest.md` in `internal/github/client.go`
 - [ ] T008 [P] Define observed-job, repository, runner-manifest including process identity, phase, participation-decision, and platform-neutral process-control types in `internal/participant/types.go`, `internal/runner/manifest.go`, and `internal/runner/process.go`
-- [ ] T009 Write CLI check-mode tests proving invalid configuration, public repositories, missing permissions, unsafe paths, and mismatched platform labels fail without POST requests or child processes in `cmd/runner-participant/main_test.go`
-- [ ] T010 Implement `-config` and side-effect-free `-check` behavior with documented exit codes in `cmd/runner-participant/main.go`
+- [ ] T009 Write CLI tests for side-effect-free `-check` plus setup pagination, archived/no-active-workflow/unknown marking, numbered multi-selection, existing-config warning, keep/cancel byte preservation, atomic allowlist-only replacement, common-owner rejection, PAT URL parameters, repository checklist, and zero token access in `cmd/runner-participant/main_test.go` and `internal/setup/setup_test.go`
+- [ ] T010 Implement `-config`, side-effect-free `-check`, and setup-only GitHub CLI repository/workflow discovery, existing-config protection, atomic allowlist replacement, and PAT-link behavior with documented exit codes in `cmd/runner-participant/main.go` and `internal/setup/setup.go`
 
 ---
 
@@ -110,9 +110,9 @@
 
 **Purpose**: Publish usable artifacts and execute the complete quality gate.
 
-- [ ] T030 [P] Document Linux systemd and Windows startup examples, PAT setup, runner-template updates, trusted-host limitations, and the timed SC-007 onboarding check in `docs/operations.md` and `SECURITY.md`
+- [ ] T030 [P] Document interactive repository selection, the manual browser repository checklist, Linux systemd and Windows startup examples, PAT setup, runner-template updates, trusted-host limitations, and the timed SC-007 onboarding check in `docs/operations.md` and `SECURITY.md`
 - [ ] T031 [P] Add reproducible `linux-amd64` and `windows-amd64` release builds with checksums in `.github/workflows/release.yml`
-- [ ] T032 Run `gofmt`, `go vet`, `go test -race ./...`, both target builds, secret-pattern scans, the SC-002 timing test, and the timed SC-007 scenario in `specs/001-on-demand-runner-dispatch/quickstart.md`; record any operational corrections in `README.md`
+- [ ] T032 Run `gofmt`, `go vet`, `go test -race ./...`, both target builds, secret-pattern scans, paginated setup selection, the SC-002 timing test, and the timed SC-007 scenario in `specs/001-on-demand-runner-dispatch/quickstart.md`; record any operational corrections in `README.md`
 
 ---
 

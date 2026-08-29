@@ -31,4 +31,5 @@
 
 ## Notes
 
-- Specification passed review on the first validation iteration.
+- Specification passed review on the first validation iteration and was revalidated
+  after adding interactive repository selection and PAT-form generation.

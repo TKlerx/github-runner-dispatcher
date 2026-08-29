@@ -9,7 +9,7 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Tests are mandatory for state transitions, security boundaries, failure paths, cleanup, and platform-specific behavior.
+**Tests**: Tests are mandatory for state transitions, setup/configuration mutation, security boundaries, failure paths, cleanup, and platform-specific behavior.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
