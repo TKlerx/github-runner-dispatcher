@@ -120,6 +120,23 @@ func TestGenerateJITConfig(t *testing.T) {
 	}
 }
 
+func TestCheckAdministrationUsesReadOnlyEndpoint(t *testing.T) {
+	t.Parallel()
+
+	client, server := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertHeaders(t, r)
+		if r.Method != http.MethodGet || r.URL.Path != "/repos/TKlerx/repo/actions/runners" || r.URL.Query().Get("per_page") != "1" {
+			t.Fatalf("request = %s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"total_count":0,"runners":[]}`))
+	}))
+	defer server.Close()
+
+	if err := client.CheckAdministration(context.Background(), Repository{Owner: "TKlerx", Name: "repo"}); err != nil {
+		t.Fatalf("CheckAdministration() error = %v", err)
+	}
+}
+
 func TestAPIErrorDoesNotLeakTokenOrResponseBody(t *testing.T) {
 	t.Parallel()
 

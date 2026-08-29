@@ -16,6 +16,7 @@ User-Agent: github-runner-dispatcher/<version>
 3. `GET /repos/{owner}/{repo}/actions/runs?status=in_progress&per_page=100` discovers active runs.
 4. `GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100` returns job status, labels, IDs, and runner identity.
 5. `GET /repos/{owner}/{repo}/actions/jobs/{job_id}` performs the final state recheck.
+6. `GET /repos/{owner}/{repo}/actions/runners?per_page=1` verifies repository runner-administration access in side-effect-free check mode.
 
 All paginated responses follow `Link` headers. Observation handles `403` rate limits
 using `Retry-After` or `X-RateLimit-Reset`; transient `5xx` and network failures use

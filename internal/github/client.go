@@ -125,6 +125,21 @@ func (client *Client) ValidatePrivateRepository(ctx context.Context, repository 
 	return nil
 }
 
+func (client *Client) CheckAdministration(ctx context.Context, repository Repository) error {
+	endpoint, err := client.repositoryEndpoint(repository, "actions", "runners")
+	if err != nil {
+		return err
+	}
+	query := endpoint.Query()
+	query.Set("per_page", "1")
+	endpoint.RawQuery = query.Encode()
+	var response struct {
+		TotalCount int `json:"total_count"`
+	}
+	_, err = client.doJSON(ctx, http.MethodGet, endpoint, nil, &response)
+	return err
+}
+
 func (client *Client) ListWorkflowRuns(ctx context.Context, repository Repository, status string) ([]WorkflowRun, error) {
 	if status != "queued" && status != "in_progress" {
 		return nil, fmt.Errorf("unsupported workflow run status %q", status)

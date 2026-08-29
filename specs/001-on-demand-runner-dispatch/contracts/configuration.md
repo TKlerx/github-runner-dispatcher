@@ -24,7 +24,7 @@ token_file: /etc/github-runner-dispatcher/token
 runner_template_dir: /opt/actions-runner-template
 state_dir: /var/lib/github-runner-dispatcher
 github_api_url: https://api.github.com
-github_api_version: 2026-03-10
+github_api_version: "2026-03-10"
 ```
 
 A slower fallback participant uses the same repository list with a larger local
