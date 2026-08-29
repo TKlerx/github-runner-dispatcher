@@ -240,6 +240,31 @@ func (client *Client) repositoryEndpoint(repository Repository, suffix ...string
 }
 
 func (client *Client) doJSON(ctx context.Context, method string, endpoint *url.URL, body, destination any) (http.Header, error) {
+	for attempt := 0; ; attempt++ {
+		headers, err := client.doJSONOnce(ctx, method, endpoint, body, destination)
+		if err == nil || attempt >= 2 {
+			return headers, err
+		}
+		delay, retry := retryDelay(err, headers, attempt)
+		if !retry {
+			return headers, err
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+type transportError struct{ err error }
+
+func (err *transportError) Error() string { return err.err.Error() }
+func (err *transportError) Unwrap() error { return err.err }
+
+func (client *Client) doJSONOnce(ctx context.Context, method string, endpoint *url.URL, body, destination any) (http.Header, error) {
 	var requestBody io.Reader
 	if body != nil {
 		encoded, err := json.Marshal(body)
@@ -262,12 +287,12 @@ func (client *Client) doJSON(ctx context.Context, method string, endpoint *url.U
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("GitHub API %s %s failed: %w", method, endpoint.EscapedPath(), err)
+		return nil, &transportError{err: fmt.Errorf("GitHub API %s %s failed: %w", method, endpoint.EscapedPath(), err)}
 	}
 	defer response.Body.Close()
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 64<<10))
-		return nil, &APIError{
+		return response.Header.Clone(), &APIError{
 			Method:     method,
 			Path:       endpoint.EscapedPath(),
 			StatusCode: response.StatusCode,
@@ -287,6 +312,40 @@ func (client *Client) doJSON(ctx context.Context, method string, endpoint *url.U
 		}
 	}
 	return response.Header.Clone(), nil
+}
+
+func retryDelay(err error, headers http.Header, attempt int) (time.Duration, bool) {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return 0, false
+	}
+	var transport *transportError
+	if errors.As(err, &transport) {
+		return time.Duration(10*(1<<attempt)) * time.Millisecond, true
+	}
+	var apiError *APIError
+	if !errors.As(err, &apiError) {
+		return 0, false
+	}
+	retry := apiError.StatusCode == http.StatusTooManyRequests || apiError.StatusCode >= 500
+	if apiError.StatusCode == http.StatusForbidden && (headers.Get("Retry-After") != "" || headers.Get("X-RateLimit-Remaining") == "0") {
+		retry = true
+	}
+	if !retry {
+		return 0, false
+	}
+	delay := time.Duration(10*(1<<attempt)) * time.Millisecond
+	if seconds, parseErr := strconv.Atoi(headers.Get("Retry-After")); parseErr == nil && seconds >= 0 {
+		delay = time.Duration(seconds) * time.Second
+	} else if reset, parseErr := strconv.ParseInt(headers.Get("X-RateLimit-Reset"), 10, 64); parseErr == nil {
+		delay = time.Until(time.Unix(reset, 0))
+	}
+	if delay < 0 {
+		delay = 0
+	}
+	if delay > 30*time.Second {
+		delay = 30 * time.Second
+	}
+	return delay, true
 }
 
 func (client *Client) nextPage(current *url.URL, header string) (*url.URL, error) {

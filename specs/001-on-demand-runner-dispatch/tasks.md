@@ -91,16 +91,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] Write atomic-manifest and startup-reconciliation tests for waiting, assigned, dead, overdue, malformed, unknown directories, reused PIDs, and mismatched or unverifiable process identities in `internal/runner/reconcile_test.go`
-- [ ] T024 [P] [US3] Write destructive-path containment, symlink/junction no-follow, and interrupted-cleanup retry tests in `internal/runner/cleanup_test.go`
-- [ ] T025 [P] [US3] Write rate-limit, `Retry-After`, transient network/5xx backoff, cancellation, and PAT/JIT redaction tests in `internal/github/retry_test.go` and `internal/participant/log_test.go`
+- [x] T023 [P] [US3] Write atomic-manifest and startup-reconciliation tests for waiting, assigned, dead, overdue, malformed, unknown directories, reused PIDs, and mismatched or unverifiable process identities in `internal/runner/reconcile_test.go`
+- [x] T024 [P] [US3] Write destructive-path containment, symlink/junction no-follow, and interrupted-cleanup retry tests in `internal/runner/cleanup_test.go`
+- [x] T025 [P] [US3] Write rate-limit, `Retry-After`, transient network/5xx backoff, cancellation, and PAT/JIT redaction tests in `internal/github/retry_test.go` and `internal/participant/log_test.go`
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] Implement atomic manifest persistence and startup reconciliation with PID/start-marker/executable verification and no-follow cleanup confined to the configured state root in `internal/runner/manifest.go` and `internal/runner/manager.go`
-- [ ] T027 [US3] Implement bounded retry scheduling for GitHub rate limits and transient failures in `internal/github/client.go`
-- [ ] T028 [US3] Implement structured participation-decision logging and centralized secret redaction in `internal/participant/log.go`
-- [ ] T029 [US3] Add restart-during-waiting, restart-during-assignment, and cleanup-recovery scenarios in `test/integration/participant_test.go`
+- [x] T026 [US3] Implement atomic manifest persistence and startup reconciliation with PID/start-marker/executable verification and no-follow cleanup confined to the configured state root in `internal/runner/manifest.go` and `internal/runner/manager.go`
+- [x] T027 [US3] Implement bounded retry scheduling for GitHub rate limits and transient failures in `internal/github/client.go`
+- [x] T028 [US3] Implement structured participation-decision logging and centralized secret redaction in `internal/participant/log.go`
+- [x] T029 [US3] Add restart-during-waiting, restart-during-assignment, and cleanup-recovery scenarios in `test/integration/participant_test.go`
 
 **Checkpoint**: All user stories pass independently and together.
 

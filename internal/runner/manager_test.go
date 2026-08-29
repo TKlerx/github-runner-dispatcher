@@ -129,6 +129,8 @@ type fakeController struct {
 	startCount int
 	started    chan StartSpec
 	terminated chan ProcessIdentity
+	statuses   map[int]ProcessStatus
+	inspectErr map[int]error
 }
 
 func (controller *fakeController) nextProcess() *fakeProcess {
@@ -148,7 +150,13 @@ func (controller *fakeController) Start(_ context.Context, spec StartSpec) (Proc
 	return process, nil
 }
 
-func (controller *fakeController) Inspect(ProcessIdentity) (ProcessStatus, error) {
+func (controller *fakeController) Inspect(identity ProcessIdentity) (ProcessStatus, error) {
+	if err := controller.inspectErr[identity.PID]; err != nil {
+		return ProcessMismatched, err
+	}
+	if status, exists := controller.statuses[identity.PID]; exists {
+		return status, nil
+	}
 	return ProcessMatches, nil
 }
 

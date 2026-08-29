@@ -82,7 +82,7 @@ func runParticipant(ctx context.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	service, err := participant.NewService(cfg, client, manager)
+	service, err := participant.NewService(cfg, client, manager, participant.NewDecisionLogger(os.Stdout, token))
 	if err != nil {
 		return err
 	}

@@ -87,7 +87,8 @@ type blockingRunner struct {
 	release chan struct{}
 }
 
-func (*blockingRunner) Active() int { return 0 }
+func (*blockingRunner) Active() int                     { return 0 }
+func (*blockingRunner) Reconcile(context.Context) error { return nil }
 func (manager *blockingRunner) Run(context.Context, runner.LaunchRequest, <-chan struct{}) error {
 	manager.calls.Add(1)
 	<-manager.release

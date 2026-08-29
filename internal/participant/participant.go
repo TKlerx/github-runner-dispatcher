@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"sync"
@@ -26,6 +27,7 @@ type GitHubAPI interface {
 
 type RunnerManager interface {
 	Active() int
+	Reconcile(context.Context) error
 	Run(context.Context, runner.LaunchRequest, <-chan struct{}) error
 }
 
@@ -37,9 +39,10 @@ type Service struct {
 	active  map[string]struct{}
 	claims  *claimTracker
 	now     func() time.Time
+	logger  *DecisionLogger
 }
 
-func NewService(cfg config.Config, github GitHubAPI, runners RunnerManager) (*Service, error) {
+func NewService(cfg config.Config, github GitHubAPI, runners RunnerManager, loggers ...*DecisionLogger) (*Service, error) {
 	if github == nil || runners == nil {
 		return nil, errors.New("GitHub client and runner manager are required")
 	}
@@ -47,7 +50,11 @@ func NewService(cfg config.Config, github GitHubAPI, runners RunnerManager) (*Se
 	if staleAfter < time.Minute {
 		staleAfter = time.Minute
 	}
-	return &Service{config: cfg, github: github, runners: runners, active: map[string]struct{}{}, claims: newClaimTracker(10_000, staleAfter), now: time.Now}, nil
+	logger := NewDecisionLogger(io.Discard)
+	if len(loggers) > 0 && loggers[0] != nil {
+		logger = loggers[0]
+	}
+	return &Service{config: cfg, github: github, runners: runners, active: map[string]struct{}{}, claims: newClaimTracker(10_000, staleAfter), now: time.Now, logger: logger}, nil
 }
 
 func (service *Service) Run(ctx context.Context) error {
@@ -64,13 +71,22 @@ func (service *Service) Run(ctx context.Context) error {
 }
 
 func (service *Service) PollOnce(ctx context.Context) error {
+	if err := service.runners.Reconcile(ctx); err != nil && service.runners.Active() >= service.config.Capacity {
+		service.log(ObservedJob{}, DecisionError, "runner reconciliation failed", err.Error())
+		return err
+	}
 	jobs, err := service.observe(ctx)
 	if err != nil {
+		service.log(ObservedJob{}, DecisionError, "GitHub observation failed", err.Error())
 		return err
 	}
 	matching := matchingQueuedJobs(jobs, service.config.Labels)
 	now := service.now()
-	for _, job := range eligibleClaims(now, service.config.ClaimDelay, service.claims.observe(now, matching)) {
+	tracked := service.claims.observe(now, matching)
+	for _, job := range tracked {
+		service.log(job, DecisionWait, "matching queued job observed", "eligible at "+job.FirstSeenAt.Add(service.config.ClaimDelay).UTC().Format(time.RFC3339Nano))
+	}
+	for _, job := range eligibleClaims(now, service.config.ClaimDelay, tracked) {
 		if service.localCapacity() < 1 || service.isActive(job) {
 			continue
 		}
@@ -114,6 +130,7 @@ func (service *Service) offer(ctx context.Context, observed ObservedJob) error {
 		return err
 	}
 	if job.Status != "queued" || !labelsMatch(job.Labels, service.config.Labels) {
+		service.log(observed, DecisionIgnore, "final job recheck no longer matches", job.Status)
 		return nil
 	}
 	if err := service.github.ValidatePrivateRepository(ctx, repository); err != nil {
@@ -127,6 +144,7 @@ func (service *Service) offer(ctx context.Context, observed ObservedJob) error {
 	if err != nil {
 		return err
 	}
+	service.log(observed, DecisionOffer, "final recheck passed", "JIT runner created")
 	jit, err := service.github.GenerateJITConfig(ctx, repository, ghapi.JITConfigRequest{
 		Name: runnerName, RunnerGroupID: configured.RunnerGroupID, Labels: append([]string(nil), service.config.Labels...), WorkFolder: "_work",
 	})
@@ -145,16 +163,28 @@ func (service *Service) offer(ctx context.Context, observed ObservedJob) error {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		_ = service.runners.Run(ctx, runner.LaunchRequest{
+		runErr := service.runners.Run(ctx, runner.LaunchRequest{
 			Repository:    runner.RepositoryIdentity{Owner: observed.Repository.Owner, Name: observed.Repository.Name},
 			ObservedJobID: observed.JobID, RunnerID: jit.Runner.ID, RunnerName: runnerName, JITConfig: jit.EncodedJITConfig,
 		}, assigned)
+		outcome := "runner completed"
+		if runErr != nil {
+			outcome = runErr.Error()
+		}
+		service.log(observed, DecisionCleanup, "runner lifecycle ended", outcome)
 		service.mu.Lock()
 		delete(service.active, key)
 		service.mu.Unlock()
 	}()
 	go service.watchAssignment(ctx, repository, observed.JobID, runnerName, assigned, done)
 	return nil
+}
+
+func (service *Service) log(job ObservedJob, decision Decision, reason, outcome string) {
+	service.logger.Log(ParticipationDecision{
+		Repository: job.Repository, JobID: job.JobID, Participant: service.config.ParticipantName,
+		Decision: decision, Reason: reason, Outcome: outcome, Timestamp: service.now().UTC(),
+	})
 }
 
 func (service *Service) watchAssignment(ctx context.Context, repository ghapi.Repository, jobID int64, runnerName string, assigned chan struct{}, done <-chan struct{}) {
@@ -179,7 +209,11 @@ func (service *Service) watchAssignment(ctx context.Context, repository ghapi.Re
 func (service *Service) localCapacity() int {
 	service.mu.Lock()
 	defer service.mu.Unlock()
-	return service.config.Capacity - len(service.active)
+	used := len(service.active)
+	if recoveredOrRunning := service.runners.Active(); recoveredOrRunning > used {
+		used = recoveredOrRunning
+	}
+	return service.config.Capacity - used
 }
 
 func (service *Service) isActive(job ObservedJob) bool {

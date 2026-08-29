@@ -190,7 +190,8 @@ type fakeRunnerManager struct {
 	requests chan runner.LaunchRequest
 }
 
-func (*fakeRunnerManager) Active() int { return 0 }
+func (*fakeRunnerManager) Active() int                     { return 0 }
+func (*fakeRunnerManager) Reconcile(context.Context) error { return nil }
 func (manager *fakeRunnerManager) Run(_ context.Context, request runner.LaunchRequest, _ <-chan struct{}) error {
 	manager.requests <- request
 	return nil
