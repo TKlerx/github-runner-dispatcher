@@ -203,6 +203,9 @@ func validateRepositories(repositories []Repository, problems *validationErrors)
 		if repository.Owner == "" || repository.Name == "" {
 			problems.add("repositories[%d] owner and name are required", i)
 		}
+		if strings.ContainsAny(repository.Owner+repository.Name, "/\\?#") {
+			problems.add("repositories[%d] owner and name must not contain path or query separators", i)
+		}
 		if !strings.EqualFold(owner, repository.Owner) {
 			problems.add("repositories must share one owner")
 		}

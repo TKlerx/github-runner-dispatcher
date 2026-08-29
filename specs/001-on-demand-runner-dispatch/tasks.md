@@ -31,8 +31,8 @@
 
 - [x] T004 [P] Write strict YAML, duration, path-safety including symlink/reparse-point ancestry, duplicate-repository, common-owner, actual-label, and token-file tests in `internal/config/config_test.go`
 - [x] T005 Implement typed configuration, defaults, aggregate validation, and PAT-file loading in `internal/config/config.go`
-- [ ] T006 [P] Write REST contract tests for private-repository validation, pagination, queued/in-progress run discovery, job labels, final job lookup, JIT creation, permission errors, and secret-free errors in `internal/github/client_test.go`
-- [ ] T007 Implement the bounded standard-library GitHub REST client described by `contracts/github-rest.md` in `internal/github/client.go`
+- [x] T006 [P] Write REST contract tests for private-repository validation, pagination, queued/in-progress run discovery, job labels, final job lookup, JIT creation, permission errors, and secret-free errors in `internal/github/client_test.go`
+- [x] T007 Implement the bounded standard-library GitHub REST client described by `contracts/github-rest.md` in `internal/github/client.go`
 - [ ] T008 [P] Define observed-job, repository, runner-manifest including process identity, phase, participation-decision, and platform-neutral process-control types in `internal/participant/types.go`, `internal/runner/manifest.go`, and `internal/runner/process.go`
 - [ ] T009 Write CLI tests for side-effect-free `-check` plus setup pagination, archived/no-active-workflow/unknown marking, numbered multi-selection, existing-config warning, keep/cancel byte preservation, atomic allowlist-only replacement, common-owner rejection, PAT URL parameters, repository checklist, and zero token access in `cmd/runner-participant/main_test.go` and `internal/setup/setup_test.go`
 - [ ] T010 Implement `-config`, side-effect-free `-check`, and setup-only GitHub CLI repository/workflow discovery, existing-config protection, atomic allowlist replacement, and PAT-link behavior with documented exit codes in `cmd/runner-participant/main.go` and `internal/setup/setup.go`
