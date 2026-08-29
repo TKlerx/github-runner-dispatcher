@@ -1,0 +1,27 @@
+# Copy this file per participant. Never put a token value in YAML.
+participant_name: jan-cachy
+
+repositories:
+  - owner: TKlerx
+    name: travel-agent
+    runner_group_id: 1
+  - owner: TKlerx
+    name: calendar-sync
+    runner_group_id: 1
+
+labels:
+  - self-hosted
+  - Windows
+  - X64
+
+poll_interval: 10s
+claim_delay: 0s
+acquisition_timeout: 90s
+capacity: 1
+
+token_file: C:/ProgramData/github-runner-dispatcher/token
+runner_template_dir: C:/ProgramData/github-runner-dispatcher/actions-runner-template
+state_dir: C:/ProgramData/github-runner-dispatcher/state
+
+github_api_url: https://api.github.com
+github_api_version: 2026-03-10
