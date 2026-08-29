@@ -17,7 +17,7 @@
 
 **Purpose**: Establish the smallest buildable Go project and public CI.
 
-- [ ] T001 Initialize the Go 1.27 module and `go.yaml.in/yaml/v4` dependency in `go.mod` and `go.sum`
+- [x] T001 Initialize the Go 1.27 module and `go.yaml.in/yaml/v4` dependency in `go.mod` and `go.sum`
 - [ ] T002 [P] Create the documented non-secret participant example in `config.example.yml`
 - [ ] T003 [P] Add formatting, vet, unit-test, race-test, and Windows/Linux build checks in `.github/workflows/ci.yml`
 

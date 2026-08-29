@@ -5,5 +5,9 @@
 tmp/
 dist/
 coverage/
+*.exe
+*.test
+*.out
+vendor/
 .idea/
 .vscode/
