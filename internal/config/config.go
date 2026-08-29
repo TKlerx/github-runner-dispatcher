@@ -170,14 +170,14 @@ func validate(cfg *Config, problems *validationErrors) {
 	}
 	validateRepositories(cfg.Repositories, problems)
 	validateLabels(cfg.Labels, problems)
-	if cfg.PollInterval <= 0 {
-		problems.add("poll_interval must be greater than zero")
+	if cfg.PollInterval < 5*time.Second || cfg.PollInterval > 5*time.Minute {
+		problems.add("poll_interval must be between 5s and 5m")
 	}
-	if cfg.ClaimDelay < 0 {
-		problems.add("claim_delay must not be negative")
+	if cfg.ClaimDelay < 0 || cfg.ClaimDelay > 30*time.Minute {
+		problems.add("claim_delay must be between 0s and 30m")
 	}
-	if cfg.AcquisitionTimeout <= 0 {
-		problems.add("acquisition_timeout must be greater than zero")
+	if cfg.AcquisitionTimeout < 30*time.Second || cfg.AcquisitionTimeout > 30*time.Minute {
+		problems.add("acquisition_timeout must be between 30s and 30m")
 	}
 	if cfg.Capacity < 1 || cfg.Capacity > 4 {
 		problems.add("capacity must be between 1 and 4")

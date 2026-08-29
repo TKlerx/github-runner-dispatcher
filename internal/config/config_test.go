@@ -108,6 +108,25 @@ func TestParseRejectsExplicitZeroValues(t *testing.T) {
 	}
 }
 
+func TestParseRejectsOutOfRangeDurations(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	for field, value := range map[string]string{
+		"poll_interval":       "4s",
+		"claim_delay":         "31m",
+		"acquisition_timeout": "29s",
+	} {
+		t.Run(field, func(t *testing.T) {
+			yaml := validYAML(t, root, "") + field + ": " + value + "\n"
+			_, err := Parse([]byte(yaml))
+			if err == nil || !strings.Contains(err.Error(), field) {
+				t.Fatalf("Parse() error = %v, want %s range error", err, field)
+			}
+		})
+	}
+}
+
 func TestParseRejectsMismatchedPlatformLabels(t *testing.T) {
 	t.Parallel()
 

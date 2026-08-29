@@ -13,7 +13,7 @@ persisted as local JSON.
 | poll_interval | duration | Required; 5s-5m |
 | claim_delay | duration | Required; 0s-30m |
 | acquisition_timeout | duration | Required; 30s-30m |
-| capacity | integer | Required; 1-16; default 1 |
+| capacity | integer | Required; 1-4; default 1 |
 | token_file | path | Required; readable regular file |
 | runner_template_dir | path | Required; clean official runner files |
 | state_dir | path | Required; must not be filesystem root or template directory |
