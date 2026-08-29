@@ -29,8 +29,8 @@
 
 **Checkpoint**: Configuration and GitHub access can be validated without creating a runner or process.
 
-- [ ] T004 [P] Write strict YAML, duration, path-safety including symlink/reparse-point ancestry, duplicate-repository, common-owner, actual-label, and token-file tests in `internal/config/config_test.go`
-- [ ] T005 Implement typed configuration, defaults, aggregate validation, and PAT-file loading in `internal/config/config.go`
+- [x] T004 [P] Write strict YAML, duration, path-safety including symlink/reparse-point ancestry, duplicate-repository, common-owner, actual-label, and token-file tests in `internal/config/config_test.go`
+- [x] T005 Implement typed configuration, defaults, aggregate validation, and PAT-file loading in `internal/config/config.go`
 - [ ] T006 [P] Write REST contract tests for private-repository validation, pagination, queued/in-progress run discovery, job labels, final job lookup, JIT creation, permission errors, and secret-free errors in `internal/github/client_test.go`
 - [ ] T007 Implement the bounded standard-library GitHub REST client described by `contracts/github-rest.md` in `internal/github/client.go`
 - [ ] T008 [P] Define observed-job, repository, runner-manifest including process identity, phase, participation-decision, and platform-neutral process-control types in `internal/participant/types.go`, `internal/runner/manifest.go`, and `internal/runner/process.go`
