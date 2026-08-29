@@ -18,3 +18,22 @@ their host outside the temporary work directory.
 Repository discovery may use GitHub CLI during setup, but the service must never
 reuse, print, or persist GitHub CLI's authentication token. The participant PAT is
 created manually from the generated GitHub form and stored only in `token_file`.
+
+## Trusted-host boundary
+
+An allowlisted workflow is arbitrary code running with the participant account's OS
+permissions. Disposable runner directories prevent state reuse between jobs; they
+are not a sandbox. Do not run participants on machines containing unrelated secrets,
+personal data, privileged Docker sockets, reusable SSH credentials, or network access
+that the repository must not receive. Repository collaborators and every dependency
+that can alter a workflow are inside the trust boundary.
+
+Use a dedicated unprivileged OS account, one PAT per participant, restrictive file
+permissions, and an explicit repository allowlist. Keep `token_file` outside the
+managed state directory. Revoke only that machine's PAT when it is retired or
+suspected compromised.
+
+The participant never triggers, reruns, approves, or cancels workflows. Setup uses
+GitHub CLI only to list owned private repositories and workflow status. Normal and
+check modes do not execute `gh`; check mode uses read-only GitHub API requests and
+does not generate JIT configuration.

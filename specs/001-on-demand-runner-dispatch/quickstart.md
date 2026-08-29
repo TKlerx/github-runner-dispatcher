@@ -1,6 +1,6 @@
 # Quickstart: Decentralized On-Demand Runner Participation
 
-This quickstart describes the intended v1 workflow after implementation.
+This quickstart describes the v1 workflow.
 
 ## 1. Select repositories and prepare GitHub access
 
@@ -90,3 +90,19 @@ service/task tooling. The project does not install privileged services itself.
 - A reused PID or mismatched process identity is reported and never signaled.
 - Cleanup unlinks a workflow-created symlink or Windows junction without traversing it.
 - Logs never contain the PAT or encoded JIT configuration.
+
+## Validation record (2026-08-29)
+
+- `gofmt -l .`: clean.
+- `go vet ./...`: clean.
+- `go test -count=1 ./...`: 62 tests passed across 7 packages.
+- `go test -race -count=1 ./...`: passed on both `ubuntu-latest` and
+  `windows-latest` in CI run `33251784801`.
+- Reproducible `linux-amd64` and `windows-amd64` builds produced identical SHA-256
+  hashes across two clean build rounds.
+- The paginated setup-selection test and the 100-observation SC-002 timing test pass.
+- The simulated side-effect-free SC-007 check completed in 2.74 seconds, below the
+  ten-minute target. A real-host timing remains an operator acceptance check because
+  it requires an installed official runner and repository-restricted PAT.
+- A tracked-source secret scan found no PAT-shaped value outside test fixtures; JIT
+  configuration appears only at its child-environment boundary and in its masking test.

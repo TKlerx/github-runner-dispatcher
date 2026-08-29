@@ -110,9 +110,9 @@
 
 **Purpose**: Publish usable artifacts and execute the complete quality gate.
 
-- [ ] T030 [P] Document interactive repository selection, the manual browser repository checklist, Linux systemd and Windows startup examples, PAT setup, runner-template updates, trusted-host limitations, and the timed SC-007 onboarding check in `docs/operations.md` and `SECURITY.md`
-- [ ] T031 [P] Add reproducible `linux-amd64` and `windows-amd64` release builds with checksums in `.github/workflows/release.yml`
-- [ ] T032 Run `gofmt`, `go vet`, `go test -race ./...`, both target builds, secret-pattern scans, paginated setup selection, the SC-002 timing test, and the timed SC-007 scenario in `specs/001-on-demand-runner-dispatch/quickstart.md`; record any operational corrections in `README.md`
+- [x] T030 [P] Document interactive repository selection, the manual browser repository checklist, Linux systemd and Windows startup examples, PAT setup, runner-template updates, trusted-host limitations, and the timed SC-007 onboarding check in `docs/operations.md` and `SECURITY.md`
+- [x] T031 [P] Add reproducible `linux-amd64` and `windows-amd64` release builds with checksums in `.github/workflows/release.yml`
+- [x] T032 Run `gofmt`, `go vet`, `go test -race ./...`, both target builds, secret-pattern scans, paginated setup selection, the SC-002 timing test, and the timed SC-007 scenario in `specs/001-on-demand-runner-dispatch/quickstart.md`; record any operational corrections in `README.md`
 
 ---
 
