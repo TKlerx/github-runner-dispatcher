@@ -74,7 +74,7 @@
 ## Phase 8: Documentation and Validation
 
 - [x] T011 Update generic examples and security language without Qwen-specific constants in `config.example.yml`, `README.md`, `SECURITY.md`, and `docs/operations.md`
-- [ ] T012 Run formatting, vet, unit, race, and build validation; verify no Qwen constants and complete all task checkboxes in `specs/002-trusted-workflow-policies/tasks.md`
+- [x] T012 Run formatting, vet, unit, race, and build validation; verify no Qwen constants and complete all task checkboxes in `specs/002-trusted-workflow-policies/tasks.md`
 
 ## Dependencies & Execution Order
 
