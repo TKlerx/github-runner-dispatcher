@@ -318,7 +318,19 @@ func copyTree(source, destination string) error {
 			return err
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("runner template contains symbolic link %s", relative)
+			linkTarget, err := os.Readlink(path)
+			if err != nil {
+				return err
+			}
+			if filepath.IsAbs(linkTarget) || filepath.VolumeName(linkTarget) != "" {
+				return fmt.Errorf("runner template link %s has an absolute target", relative)
+			}
+			resolved := filepath.Clean(filepath.Join(filepath.Dir(path), linkTarget))
+			resolvedRelative, err := filepath.Rel(source, resolved)
+			if err != nil || resolvedRelative == ".." || strings.HasPrefix(resolvedRelative, ".."+string(os.PathSeparator)) {
+				return fmt.Errorf("runner template link %s escapes the template", relative)
+			}
+			return os.Symlink(linkTarget, target)
 		}
 		if entry.IsDir() {
 			return os.MkdirAll(target, info.Mode().Perm())

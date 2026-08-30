@@ -86,6 +86,37 @@ func TestManagerUsesUniqueRunnerDirectories(t *testing.T) {
 	}
 }
 
+func TestCopyTreePreservesOnlyContainedRelativeSymlinks(t *testing.T) {
+	root := t.TempDir()
+	source, destination := filepath.Join(root, "source"), filepath.Join(root, "destination")
+	if err := os.MkdirAll(filepath.Join(source, "bin"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "bin", "tool.js"), []byte("tool"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("tool.js", filepath.Join(source, "bin", "tool")); err != nil {
+		t.Skipf("symbolic links unavailable: %v", err)
+	}
+	if err := copyTree(source, destination); err != nil {
+		t.Fatal(err)
+	}
+	if target, err := os.Readlink(filepath.Join(destination, "bin", "tool")); err != nil || target != "tool.js" {
+		t.Fatalf("copied link = %q, %v", target, err)
+	}
+
+	escapeSource := filepath.Join(root, "escape-source")
+	if err := os.Mkdir(escapeSource, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../outside", filepath.Join(escapeSource, "escape")); err != nil {
+		t.Skipf("symbolic links unavailable: %v", err)
+	}
+	if err := copyTree(escapeSource, filepath.Join(root, "escape-destination")); err == nil {
+		t.Fatal("copyTree accepted a link escaping the template")
+	}
+}
+
 func testManager(t *testing.T, timeout time.Duration, capacity int) (*Manager, *fakeController, string) {
 	t.Helper()
 	root := t.TempDir()
