@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-- Version change: 2.0.0 -> 2.1.0
+- Version change: 2.1.0 -> 2.2.0
 - Modified principles: Minimal Participant, Least Privilege, Tests Define Done
 - Added sections: none
 - Removed sections: none
@@ -23,7 +23,8 @@ but MUST NOT create tokens or mutate GitHub state.
 
 ### II. Least Privilege
 Each participant MUST use its own fine-grained PAT restricted to explicitly selected
-private repositories. Permissions MUST be limited to Metadata read, Actions read,
+repositories. A public repository MUST have explicit trusted-workflow authorization
+for every dispatched job. Permissions MUST be limited to Metadata read, Actions read,
 and Administration write as required by GitHub's JIT runner API. Secrets and encoded
 JIT configuration MUST never appear in committed configuration, logs, process
 arguments under project control, or error messages. Setup MUST NOT reuse, print, or
@@ -52,7 +53,8 @@ its tests or static checks fail.
 
 ## Security and Runtime Constraints
 
-- The first release MUST support private repositories only.
+- Private repositories MAY retain label-only dispatch. Public repositories MUST require
+  an explicit trusted-workflow policy for every dispatched job.
 - Repository names, participant identity, labels, timing values, and capacity MUST be
   configuration rather than project-specific constants.
 - Participants MUST advertise only their actual operating system and architecture.
@@ -78,4 +80,4 @@ affected templates and specifications. Every plan and review MUST verify the fiv
 core principles. Complexity exceptions MUST name the rejected simpler alternative
 and the evidence that requires the exception.
 
-**Version**: 2.1.0 | **Ratified**: 2026-08-29 | **Last Amended**: 2026-08-29
+**Version**: 2.2.0 | **Ratified**: 2026-08-29 | **Last Amended**: 2026-08-30

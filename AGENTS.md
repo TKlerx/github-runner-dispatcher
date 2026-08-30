@@ -9,5 +9,5 @@ and commit the result. Do not add abstractions or dependencies without evidence 
 native platform features are insufficient.
 
 <!-- SPECKIT START -->
-Active implementation plan: `specs/001-on-demand-runner-dispatch/plan.md`
+Active implementation plan: `specs/002-trusted-workflow-policies/plan.md`
 <!-- SPECKIT END -->

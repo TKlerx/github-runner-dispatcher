@@ -41,7 +41,7 @@
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - [ ] Runtime scope is limited to observing jobs and offering official JIT runner capacity; setup is read-only against GitHub.
-- [ ] Per-participant credentials follow least privilege and explicit private-repository selection; setup does not reuse GitHub CLI authentication as the participant token.
+- [ ] Per-participant credentials follow least privilege and explicit repository selection; public repositories require trusted-workflow policy; setup does not reuse GitHub CLI authentication as the participant token.
 - [ ] Participants remain independent; claim delay, final recheck, labels, and local capacity are explicit.
 - [ ] One-job temporary execution, restart reconciliation, timeouts, and cleanup are recoverable.
 - [ ] State transitions, setup/configuration mutation, security boundaries, and Windows/Linux differences have automated test coverage.
