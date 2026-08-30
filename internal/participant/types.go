@@ -8,14 +8,21 @@ type Repository struct {
 }
 
 type ObservedJob struct {
-	Repository  Repository
-	RunID       int64
-	JobID       int64
-	Name        string
-	Status      string
-	Labels      []string
-	RunnerName  string
-	FirstSeenAt time.Time
+	Repository        Repository
+	ServerRepository  string
+	RepositoryPrivate bool
+	RunID             int64
+	JobID             int64
+	Name              string
+	Status            string
+	Labels            []string
+	RunnerName        string
+	WorkflowID        int64
+	WorkflowPath      string
+	Event             string
+	Actor             string
+	TriggeringActor   string
+	FirstSeenAt       time.Time
 }
 
 type Decision string
