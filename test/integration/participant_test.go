@@ -39,6 +39,8 @@ func TestParticipantOffersOneJITRunnerForMatchingQueuedJob(t *testing.T) {
 			posts = append(posts, r.URL.Path)
 			mu.Unlock()
 			_ = json.NewEncoder(w).Encode(map[string]any{"runner": map[string]any{"id": 42, "name": request.Name}, "encoded_jit_config": "secret-jit"})
+		case r.Method == http.MethodDelete && r.URL.Path == "/repos/TKlerx/repo/actions/runners/42":
+			w.WriteHeader(http.StatusNoContent)
 		default:
 			http.NotFound(w, r)
 		}
@@ -166,6 +168,8 @@ func (queue *sharedQueue) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			queue.queued = false
 		}
 		_, _ = w.Write([]byte(`{"runner":{"id":42,"name":"test"},"encoded_jit_config":"secret"}`))
+	case r.Method == http.MethodDelete && r.URL.Path == "/repos/TKlerx/repo/actions/runners/42":
+		w.WriteHeader(http.StatusNoContent)
 	case r.Method != http.MethodGet:
 		queue.unexpectedMutations++
 		http.NotFound(w, r)

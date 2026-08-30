@@ -231,6 +231,18 @@ func (client *Client) GenerateJITConfig(ctx context.Context, repository Reposito
 	return response, err
 }
 
+func (client *Client) DeleteRunner(ctx context.Context, repository Repository, runnerID int64) error {
+	if runnerID < 1 {
+		return errors.New("runner ID must be greater than zero")
+	}
+	endpoint, err := client.repositoryEndpoint(repository, "actions", "runners", strconv.FormatInt(runnerID, 10))
+	if err != nil {
+		return err
+	}
+	_, err = client.doJSON(ctx, http.MethodDelete, endpoint, nil, nil)
+	return err
+}
+
 func (client *Client) repositoryEndpoint(repository Repository, suffix ...string) (*url.URL, error) {
 	if repository.Owner == "" || repository.Name == "" || strings.ContainsAny(repository.Owner+repository.Name, "/\\?#") {
 		return nil, errors.New("invalid repository owner or name")

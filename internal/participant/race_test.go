@@ -81,6 +81,7 @@ func (api *raceAPI) GenerateJITConfig(context.Context, ghapi.Repository, ghapi.J
 	response.EncodedJITConfig = "secret"
 	return response, nil
 }
+func (*raceAPI) DeleteRunner(context.Context, ghapi.Repository, int64) error { return nil }
 
 type blockingRunner struct {
 	calls   atomic.Int32

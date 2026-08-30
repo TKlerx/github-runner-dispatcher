@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"sort"
 	"strings"
 	"sync"
@@ -23,6 +24,7 @@ type GitHubAPI interface {
 	ListJobs(context.Context, ghapi.Repository, int64) ([]ghapi.Job, error)
 	GetJob(context.Context, ghapi.Repository, int64) (ghapi.Job, error)
 	GenerateJITConfig(context.Context, ghapi.Repository, ghapi.JITConfigRequest) (ghapi.JITConfig, error)
+	DeleteRunner(context.Context, ghapi.Repository, int64) error
 }
 
 type RunnerManager interface {
@@ -167,6 +169,13 @@ func (service *Service) offer(ctx context.Context, observed ObservedJob) error {
 			Repository:    runner.RepositoryIdentity{Owner: observed.Repository.Owner, Name: observed.Repository.Name},
 			ObservedJobID: observed.JobID, RunnerID: jit.Runner.ID, RunnerName: runnerName, JITConfig: jit.EncodedJITConfig,
 		}, assigned)
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
+		deleteErr := service.github.DeleteRunner(cleanupCtx, repository, jit.Runner.ID)
+		cancel()
+		var apiError *ghapi.APIError
+		if deleteErr != nil && (!errors.As(deleteErr, &apiError) || apiError.StatusCode != http.StatusNotFound) {
+			runErr = errors.Join(runErr, fmt.Errorf("remove GitHub runner registration: %w", deleteErr))
+		}
 		outcome := "runner completed"
 		if runErr != nil {
 			outcome = runErr.Error()

@@ -137,6 +137,23 @@ func TestCheckAdministrationUsesReadOnlyEndpoint(t *testing.T) {
 	}
 }
 
+func TestDeleteRunner(t *testing.T) {
+	t.Parallel()
+
+	client, server := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertHeaders(t, r)
+		if r.Method != http.MethodDelete || r.URL.Path != "/repos/TKlerx/repo/actions/runners/42" {
+			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	if err := client.DeleteRunner(context.Background(), Repository{Owner: "TKlerx", Name: "repo"}, 42); err != nil {
+		t.Fatalf("DeleteRunner() error = %v", err)
+	}
+}
+
 func TestAPIErrorDoesNotLeakTokenOrResponseBody(t *testing.T) {
 	t.Parallel()
 
