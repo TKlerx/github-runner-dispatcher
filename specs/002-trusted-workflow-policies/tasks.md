@@ -36,7 +36,7 @@
 
 **Independent Test**: Final metadata errors or differences cause zero JIT calls; a fully consistent authorized job creates one JIT configuration.
 
-- [ ] T006 [US2] Add immediate job/run re-fetch, consistency checks, repeated policy evaluation, and integration tests in `internal/participant/participant.go`, `internal/participant/race_test.go`, and `test/integration/participant_test.go`
+- [x] T006 [US2] Add immediate job/run re-fetch, consistency checks, repeated policy evaluation, and integration tests in `internal/participant/participant.go`, `internal/participant/race_test.go`, and `test/integration/participant_test.go`
 
 ---
 

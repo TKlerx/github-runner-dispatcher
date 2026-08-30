@@ -23,6 +23,7 @@ type GitHubAPI interface {
 	ListWorkflowRuns(context.Context, ghapi.Repository, string) ([]ghapi.WorkflowRun, error)
 	ListJobs(context.Context, ghapi.Repository, int64) ([]ghapi.Job, error)
 	GetJob(context.Context, ghapi.Repository, int64) (ghapi.Job, error)
+	GetWorkflowRun(context.Context, ghapi.Repository, int64) (ghapi.WorkflowRun, error)
 	GenerateJITConfig(context.Context, ghapi.Repository, ghapi.JITConfigRequest) (ghapi.JITConfig, error)
 	DeleteRunner(context.Context, ghapi.Repository, int64) error
 }
@@ -145,15 +146,22 @@ func (service *Service) offer(ctx context.Context, observed ObservedJob) error {
 	if err != nil {
 		return err
 	}
-	if job.Status != "queued" || !labelsMatch(job.Labels, service.config.Labels) {
-		service.log(observed, DecisionIgnore, "final job recheck no longer matches", job.Status)
-		return nil
-	}
-	if err := service.github.ValidatePrivateRepository(ctx, repository); err != nil {
+	run, err := service.github.GetWorkflowRun(ctx, repository, observed.RunID)
+	if err != nil {
 		return err
 	}
 	configured, ok := service.configuredRepository(observed.Repository)
 	if !ok || service.localCapacity() < 1 {
+		return nil
+	}
+	final := observedJob(configured, run, job)
+	if !finalMetadataConsistent(configured, observed, final, run.Status) || !labelsMatch(job.Labels, service.config.Labels) {
+		service.log(observed, DecisionIgnore, "final job recheck no longer matches", job.Status)
+		return nil
+	}
+	authorized, reason := authorizeJob(configured, final)
+	if !authorized {
+		service.log(observed, DecisionIgnore, "final workflow authorization denied", reason+"; "+policyIdentity(final))
 		return nil
 	}
 	runnerName, err := uniqueRunnerName(service.config.ParticipantName)
@@ -201,6 +209,40 @@ func (service *Service) offer(ctx context.Context, observed ObservedJob) error {
 	}()
 	go service.watchAssignment(ctx, repository, observed.JobID, runnerName, assigned, done)
 	return nil
+}
+
+func finalMetadataConsistent(repository config.Repository, observed, final ObservedJob, runStatus string) bool {
+	if final.JobID != observed.JobID || final.RunID != observed.RunID || final.JobRunID != observed.RunID ||
+		final.Status != "queued" || (runStatus != "queued" && runStatus != "in_progress") ||
+		!strings.EqualFold(final.ServerRepository, repository.Owner+"/"+repository.Name) ||
+		final.RepositoryPrivate != (repository.Visibility == "" || repository.Visibility == "private") ||
+		!sameLabels(final.Labels, observed.Labels) {
+		return false
+	}
+	if len(repository.TrustedWorkflows) == 0 {
+		return true
+	}
+	return final.WorkflowID == observed.WorkflowID && final.WorkflowPath == observed.WorkflowPath &&
+		final.Event == observed.Event && strings.EqualFold(final.Actor, observed.Actor) &&
+		strings.EqualFold(final.TriggeringActor, observed.TriggeringActor)
+}
+
+func sameLabels(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	counts := make(map[string]int, len(left))
+	for _, label := range left {
+		counts[strings.ToLower(label)]++
+	}
+	for _, label := range right {
+		key := strings.ToLower(label)
+		counts[key]--
+		if counts[key] < 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (service *Service) log(job ObservedJob, decision Decision, reason, outcome string) {

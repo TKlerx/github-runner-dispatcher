@@ -21,13 +21,15 @@ func TestParticipantOffersOneJITRunnerForMatchingQueuedJob(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo/actions/runs" && r.URL.Query().Get("status") == "queued":
-			_, _ = w.Write([]byte(`{"workflow_runs":[{"id":5,"status":"queued"}]}`))
+			_, _ = w.Write([]byte(`{"workflow_runs":[{"id":5,"status":"queued","repository":{"full_name":"TKlerx/repo","private":true}}]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo/actions/runs" && r.URL.Query().Get("status") == "in_progress":
 			_, _ = w.Write([]byte(`{"workflow_runs":[]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo/actions/runs/5/jobs":
 			_, _ = w.Write([]byte(`{"jobs":[{"id":11,"run_id":5,"name":"test","status":"queued","labels":["self-hosted","Windows","X64"]}]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo/actions/jobs/11":
 			_, _ = w.Write([]byte(`{"id":11,"run_id":5,"status":"queued","labels":["self-hosted","Windows","X64"]}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo/actions/runs/5":
+			_, _ = w.Write([]byte(`{"id":5,"status":"queued","repository":{"full_name":"TKlerx/repo","private":true}}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo":
 			_, _ = w.Write([]byte(`{"full_name":"TKlerx/repo","private":true}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/repos/TKlerx/repo/actions/runners/generate-jitconfig":
@@ -146,7 +148,7 @@ func (queue *sharedQueue) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo/actions/runs" && r.URL.Query().Get("status") == "queued":
 		if queued {
-			_, _ = w.Write([]byte(`{"workflow_runs":[{"id":5,"status":"queued"}]}`))
+			_, _ = w.Write([]byte(`{"workflow_runs":[{"id":5,"status":"queued","repository":{"full_name":"TKlerx/repo","private":true}}]}`))
 		} else {
 			_, _ = w.Write([]byte(`{"workflow_runs":[]}`))
 		}
@@ -160,6 +162,8 @@ func (queue *sharedQueue) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			status = "queued"
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": 11, "run_id": 5, "status": status, "labels": []string{"self-hosted", "Windows", "X64"}})
+	case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo/actions/runs/5":
+		_, _ = w.Write([]byte(`{"id":5,"status":"queued","repository":{"full_name":"TKlerx/repo","private":true}}`))
 	case r.Method == http.MethodGet && r.URL.Path == "/repos/TKlerx/repo":
 		_, _ = w.Write([]byte(`{"private":true}`))
 	case r.Method == http.MethodPost && r.URL.Path == "/repos/TKlerx/repo/actions/runners/generate-jitconfig":
