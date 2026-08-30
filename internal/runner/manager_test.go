@@ -55,6 +55,54 @@ func TestManagerTerminatesUnassignedRunnerAfterTimeout(t *testing.T) {
 	}
 }
 
+func TestManagerCleansRunnerDirectoryForEveryTerminalOutcome(t *testing.T) {
+	tests := []struct {
+		name    string
+		outcome string
+		wantErr error
+	}{
+		{"completed", "completed", nil},
+		{"failed", "failed", errors.New("job failed")},
+		{"cancelled", "cancelled", context.Canceled},
+		{"timed out", "timedout", ErrAcquisitionTimeout},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			manager, controller, _ := testManager(t, 20*time.Millisecond, 1)
+			process := controller.nextProcess()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			assigned := make(chan struct{})
+			done := make(chan error, 1)
+			go func() { done <- manager.Run(ctx, launchRequest("secret"), assigned) }()
+			spec := controller.waitForStart(t)
+			switch test.outcome {
+			case "completed":
+				close(assigned)
+				process.exit(nil)
+			case "failed":
+				close(assigned)
+				process.exit(test.wantErr)
+			case "cancelled":
+				close(assigned)
+				cancel()
+				controller.waitForTermination(t)
+				process.exit(nil)
+			case "timedout":
+				controller.waitForTermination(t)
+				process.exit(nil)
+			}
+			err := <-done
+			if test.wantErr == nil && err != nil || test.wantErr != nil && !errors.Is(err, test.wantErr) {
+				t.Fatalf("Run() error = %v, want %v", err, test.wantErr)
+			}
+			if _, err := os.Stat(spec.WorkingDir); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("runner directory remains after %s: %v", test.outcome, err)
+			}
+		})
+	}
+}
+
 func TestManagerEnforcesCapacity(t *testing.T) {
 	manager, controller, _ := testManager(t, time.Second, 1)
 	process := controller.nextProcess()

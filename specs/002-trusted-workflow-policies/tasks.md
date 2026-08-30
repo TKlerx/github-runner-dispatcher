@@ -67,7 +67,7 @@
 
 **Independent Test**: Every terminal outcome leaves no runner directory and invokes registration cleanup once.
 
-- [ ] T010 [US5] Add focused terminal-outcome cleanup coverage and fix only discovered lifecycle gaps in `internal/runner/manager_test.go` and `test/integration/participant_test.go`
+- [x] T010 [US5] Add focused terminal-outcome local-directory and registration cleanup coverage in `internal/runner/manager_test.go` and `internal/participant/race_test.go`
 
 ---
 

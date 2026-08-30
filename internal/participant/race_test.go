@@ -134,6 +134,7 @@ func policyRaceConfig() config.Config {
 type raceAPI struct {
 	finalStatus string
 	jitCalls    atomic.Int32
+	deleteCalls atomic.Int32
 }
 
 func (*raceAPI) ValidatePrivateRepository(context.Context, ghapi.Repository) error { return nil }
@@ -159,7 +160,10 @@ func (api *raceAPI) GenerateJITConfig(context.Context, ghapi.Repository, ghapi.J
 	response.EncodedJITConfig = "secret"
 	return response, nil
 }
-func (*raceAPI) DeleteRunner(context.Context, ghapi.Repository, int64) error { return nil }
+func (api *raceAPI) DeleteRunner(context.Context, ghapi.Repository, int64) error {
+	api.deleteCalls.Add(1)
+	return nil
+}
 
 type policyRaceAPI struct {
 	raceAPI
@@ -191,6 +195,41 @@ func (api *policyRaceAPI) GetWorkflowRun(context.Context, ghapi.Repository, int6
 type blockingRunner struct {
 	calls   atomic.Int32
 	release chan struct{}
+}
+
+func TestRegistrationCleanupRunsForEveryTerminalOutcome(t *testing.T) {
+	for name, outcome := range map[string]error{
+		"completed": nil,
+		"failed":    errors.New("job failed"),
+		"cancelled": context.Canceled,
+		"timed out": runner.ErrAcquisitionTimeout,
+	} {
+		t.Run(name, func(t *testing.T) {
+			api := &raceAPI{finalStatus: "queued"}
+			service, err := NewService(raceConfig(), api, terminalRunner{outcome: outcome})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := service.PollOnce(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			deadline := time.Now().Add(time.Second)
+			for api.deleteCalls.Load() == 0 && time.Now().Before(deadline) {
+				time.Sleep(time.Millisecond)
+			}
+			if api.deleteCalls.Load() != 1 {
+				t.Fatalf("registration cleanup calls = %d", api.deleteCalls.Load())
+			}
+		})
+	}
+}
+
+type terminalRunner struct{ outcome error }
+
+func (terminalRunner) Active() int                     { return 0 }
+func (terminalRunner) Reconcile(context.Context) error { return nil }
+func (manager terminalRunner) Run(context.Context, runner.LaunchRequest, <-chan struct{}) error {
+	return manager.outcome
 }
 
 func (*blockingRunner) Active() int                     { return 0 }
