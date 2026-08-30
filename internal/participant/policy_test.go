@@ -31,6 +31,7 @@ func TestTrustedWorkflowAuthorization(t *testing.T) {
 		{"repository dispatch review by another actor", func(job *ObservedJob) {
 			job.WorkflowID, job.WorkflowPath, job.Event, job.Actor, job.TriggeringActor = 77, ".github/workflows/review.yml", "repository_dispatch", "other", "other"
 		}, false},
+		{"exact path with GitHub ref suffix", func(job *ObservedJob) { job.WorkflowPath = ".github/workflows/issues.yml@main" }, true},
 		{"unauthorized rerun actor", func(job *ObservedJob) { job.TriggeringActor = "other" }, false},
 		{"missing actor metadata", func(job *ObservedJob) { job.Actor = "" }, false},
 		{"missing required label", func(job *ObservedJob) { job.Labels = []string{"self-hosted", "Linux", "X64"} }, false},

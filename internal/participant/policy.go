@@ -41,7 +41,7 @@ func workflowMatches(workflow config.TrustedWorkflow, job ObservedJob) bool {
 	if workflow.WorkflowID > 0 {
 		return workflow.WorkflowID == job.WorkflowID
 	}
-	return workflow.WorkflowPath == job.WorkflowPath
+	return workflow.WorkflowPath == job.WorkflowPath || strings.HasPrefix(job.WorkflowPath, workflow.WorkflowPath+"@")
 }
 
 func ruleMatches(rule config.AuthorizationRule, job ObservedJob) bool {
