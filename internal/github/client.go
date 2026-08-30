@@ -123,12 +123,26 @@ func NewClient(baseURL, apiVersion, token string, httpClient *http.Client) (*Cli
 }
 
 func (client *Client) ValidatePrivateRepository(ctx context.Context, repository Repository) error {
+	return client.ValidateRepository(ctx, repository, "private")
+}
+
+func (client *Client) ValidateRepository(ctx context.Context, repository Repository, visibility string) error {
 	response, err := client.GetRepository(ctx, repository)
 	if err != nil {
 		return err
 	}
-	if !response.Private {
-		return fmt.Errorf("%w: %s/%s", ErrPublicRepository, repository.Owner, repository.Name)
+	if !strings.EqualFold(response.FullName, repository.Owner+"/"+repository.Name) {
+		return fmt.Errorf("GitHub returned repository identity %q for %s/%s", response.FullName, repository.Owner, repository.Name)
+	}
+	expectPrivate := visibility == "" || visibility == "private"
+	if response.Private != expectPrivate {
+		if expectPrivate {
+			return fmt.Errorf("%w: %s/%s", ErrPublicRepository, repository.Owner, repository.Name)
+		}
+		return fmt.Errorf("repository %s/%s is private but configuration declares public", repository.Owner, repository.Name)
+	}
+	if visibility != "" && visibility != "private" && visibility != "public" {
+		return fmt.Errorf("invalid configured repository visibility %q", visibility)
 	}
 	return nil
 }

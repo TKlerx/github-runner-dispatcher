@@ -46,7 +46,7 @@
 
 **Independent Test**: Public without policy is invalid; configured and GitHub visibility mismatches fail; private legacy configuration passes.
 
-- [ ] T007 [US3] Replace private-only repository validation with policy-aware visibility checks in `internal/github/client.go`, `cmd/runner-participant/main.go`, and their tests
+- [x] T007 [US3] Replace private-only repository validation with policy-aware visibility checks in `internal/github/client.go`, `cmd/runner-participant/main.go`, and their tests
 
 ---
 

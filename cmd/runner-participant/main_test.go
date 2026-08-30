@@ -74,6 +74,44 @@ func TestCheckReturnsGitHubExitCodeForPublicRepository(t *testing.T) {
 	}
 }
 
+func TestCheckAcceptsPublicRepositoryWithPolicy(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/TKlerx/repo":
+			_, _ = w.Write([]byte(`{"full_name":"TKlerx/repo","private":false}`))
+		case r.URL.Path == "/repos/TKlerx/repo/actions/runs":
+			_, _ = w.Write([]byte(`{"workflow_runs":[]}`))
+		case r.URL.Path == "/repos/TKlerx/repo/actions/runners":
+			_, _ = w.Write([]byte(`{"total_count":0,"runners":[]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	configPath := checkConfig(t, server.URL, true)
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := strings.Replace(string(data), "    name: repo", `    name: repo
+    visibility: public
+    trusted_workflows:
+      - workflow_path: .github/workflows/review.yml
+        rules:
+          - events: [pull_request]
+            actors: ["*"]
+            required_labels: [self-hosted]`, 1)
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var output, errorOutput bytes.Buffer
+	exitCode := run(context.Background(), []string{"-config", configPath, "-check"}, strings.NewReader(""), &output, &errorOutput, nil)
+	if exitCode != 0 {
+		t.Fatalf("exit = %d, stderr = %s", exitCode, errorOutput.String())
+	}
+}
+
 func checkConfig(t *testing.T, apiURL string, createState bool) string {
 	t.Helper()
 	root := t.TempDir()

@@ -19,7 +19,6 @@ import (
 )
 
 type GitHubAPI interface {
-	ValidatePrivateRepository(context.Context, ghapi.Repository) error
 	ListWorkflowRuns(context.Context, ghapi.Repository, string) ([]ghapi.WorkflowRun, error)
 	ListJobs(context.Context, ghapi.Repository, int64) ([]ghapi.Job, error)
 	GetJob(context.Context, ghapi.Repository, int64) (ghapi.Job, error)

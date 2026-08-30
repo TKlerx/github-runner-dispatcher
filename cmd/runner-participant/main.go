@@ -55,7 +55,7 @@ func run(ctx context.Context, args []string, input io.Reader, output, errorOutpu
 		return 2
 	}
 	if *check {
-		fmt.Fprintln(output, "configuration, local prerequisites, private repositories, and GitHub permissions are valid")
+		fmt.Fprintln(output, "configuration, local prerequisites, repositories, workflow policies, and GitHub permissions are valid")
 		return 0
 	}
 	if err := runParticipant(ctx, *configPath); err != nil {
@@ -118,7 +118,7 @@ func checkConfiguration(ctx context.Context, path string) error {
 	}
 	for _, item := range cfg.Repositories {
 		repository := ghapi.Repository{Owner: item.Owner, Name: item.Name}
-		if err := client.ValidatePrivateRepository(ctx, repository); err != nil {
+		if err := client.ValidateRepository(ctx, repository, item.Visibility); err != nil {
 			return fmt.Errorf("%w for %s/%s: %v", errGitHubCheck, item.Owner, item.Name, err)
 		}
 		if _, err := client.ListWorkflowRuns(ctx, repository, "queued"); err != nil {

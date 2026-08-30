@@ -22,7 +22,7 @@ func TestClientRetriesTransientServerAndRateLimitResponses(t *testing.T) {
 					w.WriteHeader(status)
 					return
 				}
-				_, _ = w.Write([]byte(`{"private":true}`))
+				_, _ = w.Write([]byte(`{"full_name":"TKlerx/repo","private":true}`))
 			}))
 			defer server.Close()
 			if err := client.ValidatePrivateRepository(context.Background(), Repository{Owner: "TKlerx", Name: "repo"}); err != nil {

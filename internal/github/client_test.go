@@ -52,6 +52,35 @@ func TestGetRepositoryReturnsServerIdentityAndVisibility(t *testing.T) {
 	}
 }
 
+func TestValidateRepositoryAcceptsMatchingPublicVisibility(t *testing.T) {
+	t.Parallel()
+
+	client, server := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"full_name":"TKlerx/repo","private":false}`))
+	}))
+	defer server.Close()
+	if err := client.ValidateRepository(context.Background(), Repository{Owner: "TKlerx", Name: "repo"}, "public"); err != nil {
+		t.Fatalf("ValidateRepository() error = %v", err)
+	}
+}
+
+func TestValidateRepositoryRejectsIdentityOrVisibilityMismatch(t *testing.T) {
+	t.Parallel()
+
+	for name, response := range map[string]string{
+		"identity":   `{"full_name":"TKlerx/other","private":false}`,
+		"visibility": `{"full_name":"TKlerx/repo","private":true}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, server := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(response)) }))
+			defer server.Close()
+			if err := client.ValidateRepository(context.Background(), Repository{Owner: "TKlerx", Name: "repo"}, "public"); err == nil {
+				t.Fatal("ValidateRepository() unexpectedly succeeded")
+			}
+		})
+	}
+}
+
 func TestListWorkflowRunsPaginates(t *testing.T) {
 	t.Parallel()
 
