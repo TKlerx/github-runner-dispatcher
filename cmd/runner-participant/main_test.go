@@ -112,6 +112,54 @@ func TestCheckAcceptsPublicRepositoryWithPolicy(t *testing.T) {
 	}
 }
 
+func TestPolicyCLIReconcilesWithoutGitHubAccess(t *testing.T) {
+	configPath := checkConfig(t, "https://api.github.com", true)
+	policyPath := filepath.Join(t.TempDir(), "policy.yml")
+	policy := `repository:
+  owner: TKlerx
+  name: repo
+  runner_group_id: 1
+  trusted_workflows:
+    - workflow_path: .github/workflows/review.yml
+      rules:
+        - events: [pull_request]
+          actors: ["*"]
+          required_labels: [self-hosted]
+`
+	if err := os.WriteFile(policyPath, []byte(policy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	executor := &countingExecutor{}
+	var output, errorOutput bytes.Buffer
+	exitCode := run(context.Background(), []string{
+		"-config", configPath, "-policy-action", "reconcile", "-policy-file", policyPath,
+	}, strings.NewReader(""), &output, &errorOutput, executor)
+	if exitCode != 0 || executor.calls.Load() != 0 || !strings.Contains(output.String(), "completed") {
+		t.Fatalf("exit = %d, gh calls = %d, stdout = %s, stderr = %s", exitCode, executor.calls.Load(), output.String(), errorOutput.String())
+	}
+}
+
+func TestPolicyCLIRejectsIncompleteOrConflictingMode(t *testing.T) {
+	for name, args := range map[string][]string{
+		"missing file": {"-config", "config.yml", "-policy-action", "add"},
+		"with check":   {"-config", "config.yml", "-check", "-policy-action", "add", "-policy-file", "policy.yml"},
+		"with setup":   {"-config", "config.yml", "-setup", "-policy-action", "add", "-policy-file", "policy.yml"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if exit := run(context.Background(), args, strings.NewReader(""), &bytes.Buffer{}, &bytes.Buffer{}, &countingExecutor{}); exit != 2 {
+				t.Fatalf("exit = %d", exit)
+			}
+		})
+	}
+}
+
+type countingExecutor struct{ calls atomic.Int32 }
+
+func (executor *countingExecutor) Run(context.Context, ...string) ([]byte, error) {
+	executor.calls.Add(1)
+	return nil, nil
+}
+
 func checkConfig(t *testing.T, apiURL string, createState bool) string {
 	t.Helper()
 	root := t.TempDir()

@@ -33,9 +33,19 @@ func run(ctx context.Context, args []string, input io.Reader, output, errorOutpu
 	configPath := flags.String("config", "", "configuration file")
 	check := flags.Bool("check", false, "validate configuration and access without side effects")
 	configure := flags.Bool("setup", false, "select repositories and print PAT instructions")
-	if err := flags.Parse(args); err != nil || *configPath == "" || (*check && *configure) {
-		fmt.Fprintln(errorOutput, "usage: runner-participant -config <path> [-check | -setup]")
+	policyAction := flags.String("policy-action", "", "add, reconcile, or remove one repository policy")
+	policyFile := flags.String("policy-file", "", "repository policy YAML file")
+	if err := flags.Parse(args); err != nil || *configPath == "" || !validMode(*check, *configure, *policyAction, *policyFile) {
+		fmt.Fprintln(errorOutput, "usage: runner-participant -config <path> [-check | -setup | -policy-action <add|reconcile|remove> -policy-file <path>]")
 		return 2
+	}
+	if *policyAction != "" {
+		if err := setup.MutatePolicy(*configPath, *policyFile, *policyAction); err != nil {
+			fmt.Fprintln(errorOutput, err)
+			return 2
+		}
+		fmt.Fprintf(output, "repository policy %s completed\n", *policyAction)
+		return 0
 	}
 	if *configure {
 		if err := setup.Run(ctx, *configPath, input, output, executor); err != nil {
@@ -63,6 +73,14 @@ func run(ctx context.Context, args []string, input io.Reader, output, errorOutpu
 		return 4
 	}
 	return 0
+}
+
+func validMode(check, configure bool, policyAction, policyFile string) bool {
+	policyMode := policyAction != "" || policyFile != ""
+	if policyMode {
+		return !check && !configure && policyAction != "" && policyFile != ""
+	}
+	return !(check && configure)
 }
 
 func runParticipant(ctx context.Context, path string) error {
