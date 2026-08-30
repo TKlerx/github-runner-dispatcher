@@ -22,6 +22,9 @@ func TestParseAppliesDefaults(t *testing.T) {
 	if cfg.Capacity != 1 || cfg.Repositories[0].RunnerGroupID != 1 {
 		t.Fatalf("unexpected defaults: capacity=%d runner_group_id=%d", cfg.Capacity, cfg.Repositories[0].RunnerGroupID)
 	}
+	if cfg.Repositories[0].Visibility != "private" || len(cfg.Repositories[0].TrustedWorkflows) != 0 {
+		t.Fatalf("legacy repository defaults = %#v", cfg.Repositories[0])
+	}
 	if cfg.GitHubAPIURL != "https://api.github.com" || cfg.GitHubAPIVersion != "2026-03-10" {
 		t.Fatalf("unexpected GitHub defaults: %q %q", cfg.GitHubAPIURL, cfg.GitHubAPIVersion)
 	}
@@ -93,6 +96,57 @@ func TestParseRejectsDuplicateRepository(t *testing.T) {
 	_, err := Parse([]byte(yaml))
 	if err == nil || !strings.Contains(err.Error(), "duplicate repository") {
 		t.Fatalf("Parse() error = %v, want duplicate repository", err)
+	}
+}
+
+func TestParseAcceptsTrustedWorkflowRules(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Parse([]byte(trustedPolicyYAML(t, t.TempDir(), "public")))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	workflows := cfg.Repositories[0].TrustedWorkflows
+	if cfg.Repositories[0].Visibility != "public" || len(workflows) != 2 || len(workflows[0].Rules) != 2 {
+		t.Fatalf("repository policy = %#v", cfg.Repositories[0])
+	}
+}
+
+func TestParseRejectsUnsafeTrustedWorkflowPolicies(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	base := trustedPolicyYAML(t, root, "public")
+	cases := map[string]struct {
+		old  string
+		new  string
+		want string
+	}{
+		"both workflow identities": {"      - workflow_id: 123\n", "      - workflow_id: 123\n        workflow_path: .github/workflows/review.yml\n", "exactly one"},
+		"escaping path":            {"workflow_path: .github/workflows/issues.yml", "workflow_path: .github/workflows/../issues.yml", "exact .github/workflows"},
+		"mixed wildcard":           {"actors: [\"*\"]", "actors: [\"*\", trusted]", "wildcard must be the only"},
+		"unadvertised label":       {"required_labels: [dedicated]", "required_labels: [other]", "not advertised"},
+		"duplicate workflow":       {"      - workflow_path: .github/workflows/issues.yml", "      - workflow_path: .github/workflows/issues.yml\n        rules:\n          - events: [issues]\n            actors: [trusted]\n            required_labels: [dedicated]\n      - workflow_path: .github/workflows/issues.yml", "duplicates trusted workflow"},
+		"unknown nested field":     {"actors: [trusted]", "actors: [trusted]\n            payload_actor: trusted", "field payload_actor not found"},
+	}
+	for name, test := range cases {
+		t.Run(name, func(t *testing.T) {
+			yaml := strings.Replace(base, test.old, test.new, 1)
+			_, err := Parse([]byte(yaml))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Parse() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestParseRejectsPublicRepositoryWithoutPolicy(t *testing.T) {
+	t.Parallel()
+
+	yaml := strings.Replace(validYAML(t, t.TempDir(), ""), "    name: repo", "    name: repo\n    visibility: public", 1)
+	_, err := Parse([]byte(yaml))
+	if err == nil || !strings.Contains(err.Error(), "public repositories require") {
+		t.Fatalf("Parse() error = %v, want public policy requirement", err)
 	}
 }
 
@@ -207,4 +261,38 @@ token_file: ` + root + `/token
 runner_template_dir: ` + root + `/template
 state_dir: ` + root + `/state
 ` + suffix
+}
+
+func trustedPolicyYAML(t *testing.T, root, visibility string) string {
+	t.Helper()
+	osLabel, archLabel, err := hostLabels()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root = filepath.ToSlash(root)
+	return `
+participant_name: test-participant
+repositories:
+  - owner: TKlerx
+    name: repo
+    visibility: ` + visibility + `
+    trusted_workflows:
+      - workflow_id: 123
+        rules:
+          - events: [pull_request]
+            actors: ["*"]
+            required_labels: [dedicated]
+          - events: [repository_dispatch]
+            actors: [trusted]
+            required_labels: [dedicated]
+      - workflow_path: .github/workflows/issues.yml
+        rules:
+          - events: [issues, issue_comment]
+            actors: [trusted]
+            required_labels: [dedicated]
+labels: [self-hosted, ` + osLabel + `, ` + archLabel + `, dedicated]
+token_file: ` + root + `/token
+runner_template_dir: ` + root + `/template
+state_dir: ` + root + `/state
+`
 }

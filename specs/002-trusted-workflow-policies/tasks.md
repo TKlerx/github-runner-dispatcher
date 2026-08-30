@@ -14,7 +14,7 @@
 
 ## Phase 2: Foundational Policy Data
 
-- [ ] T002 Add strict visibility, trusted-workflow, and authorization-rule configuration types and validation with backward-compatibility tests in `internal/config/config.go` and `internal/config/config_test.go`
+- [x] T002 Add strict visibility, trusted-workflow, and authorization-rule configuration types and validation with backward-compatibility tests in `internal/config/config.go` and `internal/config/config_test.go`
 - [ ] T003 Add complete server-observed repository and workflow-run metadata retrieval with REST contract tests in `internal/github/client.go` and `internal/github/client_test.go`
 
 ---

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -23,9 +24,23 @@ const (
 )
 
 type Repository struct {
-	Owner         string `yaml:"owner"`
-	Name          string `yaml:"name"`
-	RunnerGroupID int64  `yaml:"runner_group_id,omitempty"`
+	Owner            string            `yaml:"owner"`
+	Name             string            `yaml:"name"`
+	Visibility       string            `yaml:"visibility,omitempty"`
+	RunnerGroupID    int64             `yaml:"runner_group_id,omitempty"`
+	TrustedWorkflows []TrustedWorkflow `yaml:"trusted_workflows,omitempty"`
+}
+
+type TrustedWorkflow struct {
+	WorkflowID   int64               `yaml:"workflow_id,omitempty"`
+	WorkflowPath string              `yaml:"workflow_path,omitempty"`
+	Rules        []AuthorizationRule `yaml:"rules"`
+}
+
+type AuthorizationRule struct {
+	Events         []string `yaml:"events"`
+	Actors         []string `yaml:"actors"`
+	RequiredLabels []string `yaml:"required_labels"`
 }
 
 type Config struct {
@@ -59,9 +74,11 @@ type rawConfig struct {
 }
 
 type rawRepository struct {
-	Owner         string `yaml:"owner"`
-	Name          string `yaml:"name"`
-	RunnerGroupID *int64 `yaml:"runner_group_id"`
+	Owner            string            `yaml:"owner"`
+	Name             string            `yaml:"name"`
+	Visibility       string            `yaml:"visibility"`
+	RunnerGroupID    *int64            `yaml:"runner_group_id"`
+	TrustedWorkflows []TrustedWorkflow `yaml:"trusted_workflows"`
 }
 
 func Load(path string) (Config, error) {
@@ -105,7 +122,13 @@ func Parse(data []byte) (Config, error) {
 	}
 	cfg.Repositories = make([]Repository, len(raw.Repositories))
 	for i, repository := range raw.Repositories {
-		cfg.Repositories[i] = Repository{Owner: repository.Owner, Name: repository.Name, RunnerGroupID: 1}
+		cfg.Repositories[i] = Repository{
+			Owner: repository.Owner, Name: repository.Name, Visibility: repository.Visibility,
+			RunnerGroupID: 1, TrustedWorkflows: repository.TrustedWorkflows,
+		}
+		if cfg.Repositories[i].Visibility == "" {
+			cfg.Repositories[i].Visibility = "private"
+		}
 		if repository.RunnerGroupID != nil {
 			cfg.Repositories[i].RunnerGroupID = *repository.RunnerGroupID
 		}
@@ -168,8 +191,8 @@ func validate(cfg *Config, problems *validationErrors) {
 	} else if len(cfg.ParticipantName) > 64 || strings.ContainsAny(cfg.ParticipantName, " \t\r\n/\\") {
 		problems.add("participant_name must be at most 64 characters without whitespace or path separators")
 	}
-	validateRepositories(cfg.Repositories, problems)
 	validateLabels(cfg.Labels, problems)
+	validateRepositories(cfg.Repositories, cfg.Labels, problems)
 	if cfg.PollInterval < 5*time.Second || cfg.PollInterval > 5*time.Minute {
 		problems.add("poll_interval must be between 5s and 5m")
 	}
@@ -189,7 +212,7 @@ func validate(cfg *Config, problems *validationErrors) {
 	validatePaths(cfg, problems)
 }
 
-func validateRepositories(repositories []Repository, problems *validationErrors) {
+func validateRepositories(repositories []Repository, participantLabels []string, problems *validationErrors) {
 	if len(repositories) == 0 {
 		problems.add("repositories must contain at least one private repository")
 		return
@@ -200,6 +223,7 @@ func validateRepositories(repositories []Repository, problems *validationErrors)
 		repository := &repositories[i]
 		repository.Owner = strings.TrimSpace(repository.Owner)
 		repository.Name = strings.TrimSpace(repository.Name)
+		repository.Visibility = strings.ToLower(strings.TrimSpace(repository.Visibility))
 		if repository.Owner == "" || repository.Name == "" {
 			problems.add("repositories[%d] owner and name are required", i)
 		}
@@ -217,7 +241,118 @@ func validateRepositories(repositories []Repository, problems *validationErrors)
 		if repository.RunnerGroupID < 1 {
 			problems.add("repositories[%d].runner_group_id must be greater than zero", i)
 		}
+		if repository.Visibility != "private" && repository.Visibility != "public" {
+			problems.add("repositories[%d].visibility must be private or public", i)
+		}
+		if repository.Visibility == "public" && len(repository.TrustedWorkflows) == 0 {
+			problems.add("repositories[%d] public repositories require trusted_workflows", i)
+		}
+		validateTrustedWorkflows(i, repository.TrustedWorkflows, participantLabels, problems)
 	}
+}
+
+func validateTrustedWorkflows(repositoryIndex int, workflows []TrustedWorkflow, participantLabels []string, problems *validationErrors) {
+	identities := make(map[string]struct{}, len(workflows))
+	for workflowIndex := range workflows {
+		workflow := &workflows[workflowIndex]
+		workflow.WorkflowPath = strings.TrimSpace(workflow.WorkflowPath)
+		field := fmt.Sprintf("repositories[%d].trusted_workflows[%d]", repositoryIndex, workflowIndex)
+		if (workflow.WorkflowID > 0) == (workflow.WorkflowPath != "") {
+			problems.add("%s must set exactly one of workflow_id or workflow_path", field)
+		}
+		if workflow.WorkflowID < 0 {
+			problems.add("%s.workflow_id must be greater than zero", field)
+		}
+		if workflow.WorkflowPath != "" && !validWorkflowPath(workflow.WorkflowPath) {
+			problems.add("%s.workflow_path must be an exact .github/workflows/*.yml or *.yaml path", field)
+		}
+		identity := fmt.Sprintf("id:%d", workflow.WorkflowID)
+		if workflow.WorkflowPath != "" {
+			identity = "path:" + workflow.WorkflowPath
+		}
+		if _, exists := identities[identity]; exists {
+			problems.add("%s duplicates trusted workflow identity %q", field, identity)
+		}
+		identities[identity] = struct{}{}
+		validateRules(field, workflow.Rules, participantLabels, problems)
+	}
+}
+
+func validateRules(field string, rules []AuthorizationRule, participantLabels []string, problems *validationErrors) {
+	if len(rules) == 0 {
+		problems.add("%s.rules must contain at least one authorization rule", field)
+		return
+	}
+	seen := make(map[string]struct{}, len(rules))
+	for ruleIndex := range rules {
+		rule := &rules[ruleIndex]
+		ruleField := fmt.Sprintf("%s.rules[%d]", field, ruleIndex)
+		validatePolicyValues(ruleField+".events", rule.Events, false, problems)
+		validatePolicyValues(ruleField+".actors", rule.Actors, true, problems)
+		validatePolicyValues(ruleField+".required_labels", rule.RequiredLabels, false, problems)
+		if containsFold(rule.Actors, "*") && len(rule.Actors) != 1 {
+			problems.add("%s.actors wildcard must be the only actor", ruleField)
+		}
+		for _, label := range rule.RequiredLabels {
+			if !containsFold(participantLabels, label) {
+				problems.add("%s.required_labels contains label %q not advertised by participant", ruleField, label)
+			}
+		}
+		identity := canonicalRule(*rule)
+		if _, exists := seen[identity]; exists {
+			problems.add("%s duplicates another authorization rule", ruleField)
+		}
+		seen[identity] = struct{}{}
+	}
+}
+
+func validatePolicyValues(field string, values []string, allowWildcard bool, problems *validationErrors) {
+	if len(values) == 0 {
+		problems.add("%s must contain at least one value", field)
+		return
+	}
+	seen := make(map[string]struct{}, len(values))
+	for i := range values {
+		values[i] = strings.TrimSpace(values[i])
+		key := strings.ToLower(values[i])
+		if values[i] == "" || len(values[i]) > 100 || strings.ContainsAny(values[i], " \t\r\n/\\?#") || (values[i] == "*" && !allowWildcard) {
+			problems.add("%s contains invalid value %q", field, values[i])
+		} else if _, exists := seen[key]; exists {
+			problems.add("%s contains duplicate %q", field, values[i])
+		}
+		seen[key] = struct{}{}
+	}
+}
+
+func validWorkflowPath(value string) bool {
+	return strings.HasPrefix(value, ".github/workflows/") &&
+		(strings.HasSuffix(value, ".yml") || strings.HasSuffix(value, ".yaml")) &&
+		!strings.ContainsAny(value, "\\@?#") && !strings.Contains(value, "//") &&
+		!strings.Contains(value, "/../") && !strings.Contains(value, "/./")
+}
+
+func canonicalRule(rule AuthorizationRule) string {
+	parts := make([]string, 0, len(rule.Events)+len(rule.Actors)+len(rule.RequiredLabels))
+	for _, value := range rule.Events {
+		parts = append(parts, "event:"+value)
+	}
+	for _, value := range rule.Actors {
+		parts = append(parts, "actor:"+strings.ToLower(value))
+	}
+	for _, value := range rule.RequiredLabels {
+		parts = append(parts, "label:"+strings.ToLower(value))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, "\x00")
+}
+
+func containsFold(values []string, wanted string) bool {
+	for _, value := range values {
+		if strings.EqualFold(value, wanted) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateLabels(labels []string, problems *validationErrors) {
