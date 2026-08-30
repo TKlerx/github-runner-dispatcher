@@ -4,15 +4,32 @@ participant_name: jan-cachy
 repositories:
   - owner: TKlerx
     name: travel-agent
+    # visibility defaults to private when omitted.
     runner_group_id: 1
   - owner: TKlerx
     name: calendar-sync
     runner_group_id: 1
 
+# Public repositories require trusted_workflows. Private repositories may also use
+# them when label-only dispatch is too broad. Each workflow uses exactly one ID or
+# path and can have different actor rules for different events:
+#
+#    visibility: public
+#    trusted_workflows:
+#      - workflow_id: 123456
+#        rules:
+#          - events: [pull_request]
+#            actors: ["*"]
+#            required_labels: [dedicated-workload]
+#          - events: [repository_dispatch]
+#            actors: [trusted-operator]
+#            required_labels: [dedicated-workload]
+
 labels:
   - self-hosted
   - Windows
   - X64
+  # - dedicated-workload
 
 poll_interval: 10s
 claim_delay: 0s

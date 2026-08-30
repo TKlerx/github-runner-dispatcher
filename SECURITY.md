@@ -9,8 +9,9 @@ unpatched exploit.
 ## Operational warning
 
 Self-hosted runners execute repository workflow code on operator-controlled machines.
-Use this project only with private repositories and contributors you trust. Give
-each participant a separate fine-grained PAT limited to selected repositories and
+Use label-only dispatch only with private repositories and contributors you trust.
+Public repositories require explicit trusted-workflow policies for every dispatched
+job. Give each participant a separate fine-grained PAT limited to selected repositories and
 the Metadata read, Actions read, and Administration write permissions required for
 JIT runners. Treat JIT configuration as a secret and assume workflow jobs can modify
 their host outside the temporary work directory.
@@ -27,6 +28,12 @@ are not a sandbox. Do not run participants on machines containing unrelated secr
 personal data, privileged Docker sockets, reusable SSH credentials, or network access
 that the repository must not receive. Repository collaborators and every dependency
 that can alter a workflow are inside the trust boundary.
+
+A trusted-workflow policy checks GitHub-reported workflow identity, event, actors, and
+runner labels. It does not inspect or prove workflow content, branch protection, checkout
+behavior, payload safety, or read-only execution. Prefer immutable workflow IDs over
+paths where practical. Named-actor rules require both GitHub's original `actor` and
+current `triggering_actor` to match; wildcard actor rules must be explicit.
 
 Use a dedicated unprivileged OS account, one PAT per participant, restrictive file
 permissions, and an explicit repository allowlist. Keep `token_file` outside the

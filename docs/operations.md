@@ -17,6 +17,18 @@ Archived repositories, repositories without an active workflow, and workflow-sta
 lookup failures are marked before selection. A repository without active CI is safe
 to select; it remains idle until an active workflow queues a matching job.
 
+Interactive setup remains intentionally private-repository-only. To onboard a public
+repository, or to add explicit policy to a private repository, provide one complete
+repository entry in a strict policy file and run:
+
+```text
+runner-participant -config config.yml -policy-action reconcile -policy-file repository-policy.yml
+```
+
+Use `add` to require absence, `reconcile` for idempotent create/update, and `remove` to
+remove the repository entry. A public entry without at least one trusted workflow is
+rejected. The command mutates only the local YAML and does not use GitHub CLI or the PAT.
+
 Setup prints a fine-grained-PAT form and an exact repository checklist. In the
 browser, choose "Only select repositories," select every listed repository, and
 grant Metadata read, Actions read, and Administration write. Store the resulting PAT
@@ -73,6 +85,10 @@ idle contenders time out.
 To update the official runner, stop the participant, replace the clean template,
 run `-check`, and restart. Existing disposable copies finish or reconcile from their
 own directories.
+
+JIT exit and directory removal are cleanup, not sandboxing. A workflow still runs with
+the service account's host and network permissions and may modify resources outside its
+temporary work directory.
 
 ## Ten-minute onboarding check (SC-007)
 
