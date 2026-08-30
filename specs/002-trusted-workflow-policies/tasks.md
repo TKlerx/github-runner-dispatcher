@@ -56,7 +56,7 @@
 
 **Independent Test**: All three operations, idempotent reconciliation, invalid-input rollback, and retained interactive policy entries pass against temporary files.
 
-- [ ] T008 [US4] Add strict repository-policy file parsing and atomic add/reconcile/remove operations while preserving retained setup entries in `internal/setup/policy.go`, `internal/setup/setup.go`, and tests
+- [x] T008 [US4] Add strict repository-policy file parsing and atomic add/reconcile/remove operations while preserving retained setup entries in `internal/setup/policy.go`, `internal/setup/setup.go`, and tests
 - [ ] T009 [US4] Expose mutually exclusive policy CLI flags and exit behavior in `cmd/runner-participant/main.go` and `cmd/runner-participant/main_test.go`
 
 ---

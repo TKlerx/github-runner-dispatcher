@@ -242,6 +242,10 @@ func replaceAllowlist(path string, repositories []repository) error {
 		value := &yaml.Node{Kind: yaml.SequenceNode}
 		for _, item := range repositories {
 			parts := strings.SplitN(item.FullName, "/", 2)
+			if existing := repositoryNodeIndex(root.Content[i+1], parts[0], parts[1]); existing >= 0 {
+				value.Content = append(value.Content, root.Content[i+1].Content[existing])
+				continue
+			}
 			entry := &yaml.Node{Kind: yaml.MappingNode}
 			entry.Content = append(entry.Content,
 				&yaml.Node{Kind: yaml.ScalarNode, Value: "owner"}, &yaml.Node{Kind: yaml.ScalarNode, Value: parts[0]},

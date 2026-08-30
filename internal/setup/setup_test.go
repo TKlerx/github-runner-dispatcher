@@ -117,6 +117,28 @@ func TestRunKeepLeavesExistingConfigUntouched(t *testing.T) {
 	}
 }
 
+func TestReplaceAllowlistPreservesRetainedRepositoryPolicy(t *testing.T) {
+	root := t.TempDir()
+	configPath := writeConfig(t, root)
+	policyPath := writePolicy(t, root, "old", "private", ".github/workflows/review.yml")
+	if err := MutatePolicy(configPath, policyPath, "reconcile"); err != nil {
+		t.Fatal(err)
+	}
+	if err := replaceAllowlist(configPath, []repository{
+		{Name: "old", FullName: "TKlerx/old", Private: true},
+		{Name: "new", FullName: "TKlerx/new", Private: true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Repositories) != 2 || len(cfg.Repositories[0].TrustedWorkflows) != 1 || cfg.Repositories[0].TrustedWorkflows[0].WorkflowPath != ".github/workflows/review.yml" {
+		t.Fatalf("repositories = %#v", cfg.Repositories)
+	}
+}
+
 func TestParseSelection(t *testing.T) {
 	selected, err := parseSelection("1,3-4,4", 5)
 	if err != nil {
