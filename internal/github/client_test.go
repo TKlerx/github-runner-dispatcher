@@ -37,6 +37,21 @@ func TestValidatePrivateRepository(t *testing.T) {
 	}
 }
 
+func TestGetRepositoryReturnsServerIdentityAndVisibility(t *testing.T) {
+	t.Parallel()
+
+	client, server := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertHeaders(t, r)
+		_, _ = w.Write([]byte(`{"full_name":"TKlerx/repo","private":false}`))
+	}))
+	defer server.Close()
+
+	repository, err := client.GetRepository(context.Background(), Repository{Owner: "TKlerx", Name: "repo"})
+	if err != nil || repository.FullName != "TKlerx/repo" || repository.Private {
+		t.Fatalf("GetRepository() = %#v, %v", repository, err)
+	}
+}
+
 func TestListWorkflowRunsPaginates(t *testing.T) {
 	t.Parallel()
 
@@ -47,11 +62,11 @@ func TestListWorkflowRunsPaginates(t *testing.T) {
 			t.Fatalf("query = %q", r.URL.RawQuery)
 		}
 		if r.URL.Query().Get("page") == "2" {
-			_, _ = w.Write([]byte(`{"workflow_runs":[{"id":2,"status":"queued"}]}`))
+			_, _ = w.Write([]byte(`{"workflow_runs":[{"id":2,"status":"queued","workflow_id":22,"path":".github/workflows/review.yml","event":"pull_request","actor":{"login":"contributor"},"triggering_actor":{"login":"contributor"},"repository":{"full_name":"TKlerx/repo","private":false}}]}`))
 			return
 		}
 		w.Header().Set("Link", fmt.Sprintf(`<%s/repos/TKlerx/repo/actions/runs?status=queued&per_page=100&page=2>; rel="next"`, server.URL))
-		_, _ = w.Write([]byte(`{"workflow_runs":[{"id":1,"status":"queued"}]}`))
+		_, _ = w.Write([]byte(`{"workflow_runs":[{"id":1,"status":"queued","workflow_id":11,"path":".github/workflows/issues.yml","event":"issues","actor":{"login":"TKlerx"},"triggering_actor":{"login":"TKlerx"},"repository":{"full_name":"TKlerx/repo","private":false}}]}`))
 	}))
 	defer server.Close()
 
@@ -61,6 +76,9 @@ func TestListWorkflowRunsPaginates(t *testing.T) {
 	}
 	if len(runs) != 2 || runs[0].ID != 1 || runs[1].ID != 2 {
 		t.Fatalf("runs = %#v", runs)
+	}
+	if runs[1].WorkflowID != 22 || runs[1].Event != "pull_request" || runs[1].Actor.Login != "contributor" || runs[1].Repository.FullName != "TKlerx/repo" || runs[1].Repository.Private {
+		t.Fatalf("workflow metadata = %#v", runs[1])
 	}
 }
 
@@ -90,6 +108,24 @@ func TestListJobsAndGetJob(t *testing.T) {
 	job, err := client.GetJob(context.Background(), Repository{Owner: "TKlerx", Name: "repo"}, 11)
 	if err != nil || job.RunnerID != 9 || job.RunnerName != "participant-abcd" {
 		t.Fatalf("GetJob() = %#v, %v", job, err)
+	}
+}
+
+func TestGetWorkflowRun(t *testing.T) {
+	t.Parallel()
+
+	client, server := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertHeaders(t, r)
+		if r.URL.Path != "/repos/TKlerx/repo/actions/runs/7" {
+			t.Fatalf("path = %q", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"id":7,"status":"in_progress","workflow_id":123,"path":".github/workflows/review.yml","event":"repository_dispatch","actor":{"login":"TKlerx"},"triggering_actor":{"login":"TKlerx"},"repository":{"full_name":"TKlerx/repo","private":true}}`))
+	}))
+	defer server.Close()
+
+	run, err := client.GetWorkflowRun(context.Background(), Repository{Owner: "TKlerx", Name: "repo"}, 7)
+	if err != nil || run.ID != 7 || run.WorkflowID != 123 || run.Path != ".github/workflows/review.yml" || run.Event != "repository_dispatch" || run.TriggeringActor.Login != "TKlerx" || !run.Repository.Private {
+		t.Fatalf("GetWorkflowRun() = %#v, %v", run, err)
 	}
 }
 

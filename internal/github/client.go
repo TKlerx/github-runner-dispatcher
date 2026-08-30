@@ -27,9 +27,24 @@ type Repository struct {
 	Name  string
 }
 
+type RepositoryInfo struct {
+	FullName string `json:"full_name"`
+	Private  bool   `json:"private"`
+}
+
+type Actor struct {
+	Login string `json:"login"`
+}
+
 type WorkflowRun struct {
-	ID     int64  `json:"id"`
-	Status string `json:"status"`
+	ID              int64          `json:"id"`
+	Status          string         `json:"status"`
+	WorkflowID      int64          `json:"workflow_id"`
+	Path            string         `json:"path"`
+	Event           string         `json:"event"`
+	Actor           Actor          `json:"actor"`
+	TriggeringActor Actor          `json:"triggering_actor"`
+	Repository      RepositoryInfo `json:"repository"`
 }
 
 type Job struct {
@@ -108,21 +123,24 @@ func NewClient(baseURL, apiVersion, token string, httpClient *http.Client) (*Cli
 }
 
 func (client *Client) ValidatePrivateRepository(ctx context.Context, repository Repository) error {
-	endpoint, err := client.repositoryEndpoint(repository)
+	response, err := client.GetRepository(ctx, repository)
 	if err != nil {
-		return err
-	}
-	var response struct {
-		FullName string `json:"full_name"`
-		Private  bool   `json:"private"`
-	}
-	if _, err := client.doJSON(ctx, http.MethodGet, endpoint, nil, &response); err != nil {
 		return err
 	}
 	if !response.Private {
 		return fmt.Errorf("%w: %s/%s", ErrPublicRepository, repository.Owner, repository.Name)
 	}
 	return nil
+}
+
+func (client *Client) GetRepository(ctx context.Context, repository Repository) (RepositoryInfo, error) {
+	endpoint, err := client.repositoryEndpoint(repository)
+	if err != nil {
+		return RepositoryInfo{}, err
+	}
+	var response RepositoryInfo
+	_, err = client.doJSON(ctx, http.MethodGet, endpoint, nil, &response)
+	return response, err
 }
 
 func (client *Client) CheckAdministration(ctx context.Context, repository Repository) error {
@@ -219,6 +237,19 @@ func (client *Client) GetJob(ctx context.Context, repository Repository, jobID i
 	var job Job
 	_, err = client.doJSON(ctx, http.MethodGet, endpoint, nil, &job)
 	return job, err
+}
+
+func (client *Client) GetWorkflowRun(ctx context.Context, repository Repository, runID int64) (WorkflowRun, error) {
+	if runID < 1 {
+		return WorkflowRun{}, errors.New("run ID must be greater than zero")
+	}
+	endpoint, err := client.repositoryEndpoint(repository, "actions", "runs", strconv.FormatInt(runID, 10))
+	if err != nil {
+		return WorkflowRun{}, err
+	}
+	var run WorkflowRun
+	_, err = client.doJSON(ctx, http.MethodGet, endpoint, nil, &run)
+	return run, err
 }
 
 func (client *Client) GenerateJITConfig(ctx context.Context, repository Repository, request JITConfigRequest) (JITConfig, error) {
