@@ -114,15 +114,29 @@ func (service *Service) observe(ctx context.Context) ([]ObservedJob, error) {
 					return nil, err
 				}
 				for _, job := range jobs {
-					observed = append(observed, ObservedJob{
-						Repository: Repository{Owner: configured.Owner, Name: configured.Name}, RunID: run.ID,
-						JobID: job.ID, Name: job.Name, Status: job.Status, Labels: append([]string(nil), job.Labels...), RunnerName: job.RunnerName,
-					})
+					candidate := observedJob(configured, run, job)
+					authorized, reason := authorizeJob(configured, candidate)
+					if !authorized {
+						service.log(candidate, DecisionIgnore, "workflow authorization denied", reason+"; "+policyIdentity(candidate))
+						continue
+					}
+					observed = append(observed, candidate)
 				}
 			}
 		}
 	}
 	return observed, nil
+}
+
+func observedJob(repository config.Repository, run ghapi.WorkflowRun, job ghapi.Job) ObservedJob {
+	return ObservedJob{
+		Repository:       Repository{Owner: repository.Owner, Name: repository.Name},
+		ServerRepository: run.Repository.FullName, RepositoryPrivate: run.Repository.Private,
+		RunID: run.ID, JobRunID: job.RunID, JobID: job.ID, Name: job.Name, Status: job.Status,
+		Labels: append([]string(nil), job.Labels...), RunnerName: job.RunnerName,
+		WorkflowID: run.WorkflowID, WorkflowPath: run.Path, Event: run.Event,
+		Actor: run.Actor.Login, TriggeringActor: run.TriggeringActor.Login,
+	}
 }
 
 func (service *Service) offer(ctx context.Context, observed ObservedJob) error {

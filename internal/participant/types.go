@@ -12,6 +12,7 @@ type ObservedJob struct {
 	ServerRepository  string
 	RepositoryPrivate bool
 	RunID             int64
+	JobRunID          int64
 	JobID             int64
 	Name              string
 	Status            string

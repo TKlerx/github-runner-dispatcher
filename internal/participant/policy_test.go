@@ -77,7 +77,7 @@ func policyRepository() config.Repository {
 func policyJob() ObservedJob {
 	return ObservedJob{
 		Repository: Repository{Owner: "TKlerx", Name: "agent"}, ServerRepository: "TKlerx/agent",
-		RunID: 1, JobID: 2, Status: "queued", Labels: []string{"self-hosted", "Linux", "X64", "dedicated"},
+		RunID: 1, JobRunID: 1, JobID: 2, Status: "queued", Labels: []string{"self-hosted", "Linux", "X64", "dedicated"},
 		WorkflowID: 10, WorkflowPath: ".github/workflows/issues.yml", Event: "issue_comment",
 		Actor: "TKlerx", TriggeringActor: "TKlerx",
 	}

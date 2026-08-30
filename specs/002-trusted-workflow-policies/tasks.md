@@ -26,7 +26,7 @@
 **Independent Test**: Unknown workflow, unauthorized coding/fix actor, wildcard PR actor, and restricted repository-dispatch actor cases produce the expected allow/deny decisions.
 
 - [x] T004 [US1] Add fail-closed policy evaluation and focused Qwen-shaped-but-generic authorization tests in `internal/participant/policy.go`, `internal/participant/policy_test.go`, and `internal/participant/types.go`
-- [ ] T005 [US1] Apply initial policy authorization during observation without changing policy-free private behavior in `internal/participant/participant.go` and `internal/participant/participant_test.go`
+- [x] T005 [US1] Apply initial policy authorization during observation without changing policy-free private behavior in `internal/participant/participant.go` and `internal/participant/participant_test.go`
 
 ---
 

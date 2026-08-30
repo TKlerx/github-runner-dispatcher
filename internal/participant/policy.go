@@ -9,12 +9,12 @@ import (
 
 func authorizeJob(repository config.Repository, job ObservedJob) (bool, string) {
 	if len(repository.TrustedWorkflows) == 0 {
-		if repository.Visibility == "private" {
+		if repository.Visibility == "" || repository.Visibility == "private" {
 			return true, "private repository has no workflow policy"
 		}
 		return false, "public repository has no workflow policy"
 	}
-	if job.RunID < 1 || job.JobID < 1 || job.ServerRepository == "" ||
+	if job.RunID < 1 || job.JobRunID != job.RunID || job.JobID < 1 || job.ServerRepository == "" ||
 		job.WorkflowID < 1 || job.WorkflowPath == "" || job.Event == "" ||
 		job.Actor == "" || job.TriggeringActor == "" {
 		return false, "policy metadata is incomplete"
