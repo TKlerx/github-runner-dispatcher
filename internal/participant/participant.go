@@ -256,7 +256,7 @@ func (service *Service) watchAssignment(ctx context.Context, repository ghapi.Re
 	defer ticker.Stop()
 	for {
 		job, err := service.github.GetJob(ctx, repository, jobID)
-		if err == nil && job.Status == "in_progress" && job.RunnerName == runnerName {
+		if err == nil && job.RunnerName == runnerName && (job.Status == "in_progress" || job.Status == "completed") || service.runnerAssigned(ctx, repository, runnerName) {
 			close(assigned)
 			return
 		}
@@ -268,6 +268,27 @@ func (service *Service) watchAssignment(ctx context.Context, repository ghapi.Re
 		case <-ticker.C:
 		}
 	}
+}
+
+// GitHub assigns repository runners to compatible jobs, not to the job that
+// prompted their creation. Track the actual runner before declaring it idle.
+func (service *Service) runnerAssigned(ctx context.Context, repository ghapi.Repository, runnerName string) bool {
+	runs, err := service.github.ListWorkflowRuns(ctx, repository, "in_progress")
+	if err != nil {
+		return false
+	}
+	for _, run := range runs {
+		jobs, err := service.github.ListJobs(ctx, repository, run.ID)
+		if err != nil {
+			continue
+		}
+		for _, job := range jobs {
+			if job.RunnerName == runnerName && (job.Status == "in_progress" || job.Status == "completed") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (service *Service) localCapacity() int {
