@@ -90,6 +90,26 @@ JIT exit and directory removal are cleanup, not sandboxing. A workflow still run
 the service account's host and network permissions and may modify resources outside its
 temporary work directory.
 
+## Recover failed runner cleanup
+
+An active systemd service does not guarantee dispatch is progressing. Repeated
+`runner reconciliation failed` messages reserve capacity until state can be
+reconciled. Cleanup retains the manifest until workspace deletion succeeds, so
+transient deletion failures are retried on the next poll.
+
+For an `invalid runner manifest` left by an older version, stop the participant
+and confirm its runner processes and children have stopped before moving the
+affected instance directory outside `state_dir/runners` into an access-restricted
+quarantine. Preserve the data for inspection; do not delete arbitrary unknown state
+or raise capacity to hide the error. Install the fixed binary, run `-check`, restart,
+and verify that queued jobs acquire runners. Linux systemd deployments should retain
+`KillMode=control-group` so stopping the service also stops its runner children.
+
+GitHub may assign a JIT runner a different compatible job from the one that prompted
+its creation. Assignment monitoring follows that runner across in-progress runs in
+its repository. Linux runners use dedicated process groups so cancellation and idle
+timeouts terminate their children before workspace cleanup.
+
 ## Ten-minute onboarding check (SC-007)
 
 Start with the binary, clean official runner template, and PAT installed. Start a

@@ -24,6 +24,9 @@ type nativeProcess struct {
 func (NativeProcessController) Start(ctx context.Context, spec StartSpec) (Process, error) {
 	command := exec.CommandContext(ctx, spec.Executable)
 	command.Dir, command.Env = spec.WorkingDir, spec.Environment
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// Let Manager cancel the verified process group, not just the shell parent.
+	command.Cancel = func() error { return nil }
 	if err := command.Start(); err != nil {
 		return nil, err
 	}
@@ -53,11 +56,24 @@ func (NativeProcessController) Inspect(expected ProcessIdentity) (ProcessStatus,
 }
 
 func (NativeProcessController) Terminate(identity ProcessIdentity) error {
-	process, err := os.FindProcess(identity.PID)
+	status, err := (NativeProcessController{}).Inspect(identity)
 	if err != nil {
 		return err
 	}
-	return process.Signal(syscall.SIGTERM)
+	if status == ProcessMissing {
+		return nil
+	}
+	if status != ProcessMatches {
+		return errors.New("refusing to terminate a process whose identity does not match")
+	}
+	group, err := syscall.Getpgid(identity.PID)
+	if err != nil {
+		return err
+	}
+	if group != identity.PID {
+		return errors.New("refusing to terminate a runner without a dedicated process group")
+	}
+	return syscall.Kill(-group, syscall.SIGKILL)
 }
 
 func linuxIdentity(pid int) (ProcessIdentity, error) {

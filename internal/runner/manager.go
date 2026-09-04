@@ -265,7 +265,29 @@ func (manager *Manager) removeInstance(directory string) error {
 	if info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("refusing cleanup of a linked runner directory")
 	}
-	return os.RemoveAll(directory)
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return err
+	}
+	// Keep recovery metadata until all workspace content has been removed.
+	for _, entry := range entries {
+		if entry.Name() != "manifest.json" {
+			if err := os.RemoveAll(filepath.Join(directory, entry.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	manifest, manifestErr := readManifest(directory)
+	if err := os.Remove(filepath.Join(directory, "manifest.json")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.Remove(directory); err != nil {
+		if manifestErr == nil {
+			return errors.Join(err, writeManifest(directory, &manifest))
+		}
+		return err
+	}
+	return nil
 }
 
 func readManifest(directory string) (Manifest, error) {
