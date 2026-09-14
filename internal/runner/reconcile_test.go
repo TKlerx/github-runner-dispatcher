@@ -54,7 +54,7 @@ func TestReconcileCleansDeadAndTerminatesOnlyVerifiedOverdueRunner(t *testing.T)
 	}
 }
 
-func TestReconcileReportsMalformedUnknownAndInspectionFailureWithoutDeleting(t *testing.T) {
+func TestReconcileDiscardsPreLaunchStateAndRetainsInspectionFailure(t *testing.T) {
 	manager, controller, _ := testManager(t, time.Second, 4)
 	controller.inspectErr = map[int]error{104: errors.New("access denied")}
 	unknown := filepath.Join(manager.StateDir, "runners", "unknown")
@@ -71,15 +71,18 @@ func TestReconcileReportsMalformedUnknownAndInspectionFailureWithoutDeleting(t *
 	unverifiable := writeTestManifest(t, manager, "unverifiable", Manifest{ProcessID: 104, Phase: PhaseWaiting})
 
 	if err := manager.Reconcile(context.Background()); err == nil {
-		t.Fatal("Reconcile() did not report unsafe directories")
+		t.Fatal("Reconcile() did not report the inspection failure")
 	}
-	for _, path := range []string{unknown, malformed, unverifiable} {
-		if _, err := os.Stat(path); err != nil {
-			t.Fatalf("unsafe directory was removed: %s: %v", path, err)
+	for _, path := range []string{unknown, malformed} {
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("pre-launch state remains: %s: %v", path, err)
 		}
 	}
-	if manager.Active() != 3 {
-		t.Fatalf("unsafe directories must reserve capacity, active = %d", manager.Active())
+	if _, err := os.Stat(unverifiable); err != nil {
+		t.Fatalf("unverifiable process state was removed: %v", err)
+	}
+	if manager.Active() != 1 {
+		t.Fatalf("only unverifiable processes must reserve capacity, active = %d", manager.Active())
 	}
 }
 
