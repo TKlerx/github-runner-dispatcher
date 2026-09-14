@@ -204,8 +204,12 @@ func (manager *Manager) Reconcile(ctx context.Context) error {
 		}
 		manifest, readErr := readManifest(directory)
 		if readErr != nil || manifest.InstanceID != entry.Name() || manifest.SchemaVersion != ManifestSchemaVersion {
-			recovered++
-			problems = append(problems, fmt.Errorf("invalid runner manifest %s", entry.Name()))
+			// A runner process is only started after a valid manifest is written.
+			// Invalid state therefore belongs to an interrupted pre-launch copy and is safe to discard.
+			if removeErr := manager.removeInstance(directory); removeErr != nil {
+				recovered++
+				problems = append(problems, fmt.Errorf("remove invalid runner state %s: %w", entry.Name(), removeErr))
+			}
 			continue
 		}
 		if manifest.Phase == PhaseCleanupFailed || manifest.Phase == PhaseCleaning || manifest.Phase == PhaseExited || manifest.Phase == PhaseFailed || manifest.Phase == PhaseTimedOut || manifest.ProcessID == 0 {
