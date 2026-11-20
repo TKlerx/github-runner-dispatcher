@@ -2,6 +2,9 @@
 
 ## Install a participant
 
+Build with Go 1.27.4 or newer. The module pins this security floor so CI and local
+builds do not select the vulnerable 1.27.0 toolchain from a runner's cache.
+
 1. Download the `linux-amd64` or `windows-amd64` release binary.
 2. Download and extract the matching official GitHub Actions runner into a clean
    template directory. Do not run `config.sh` or `config.cmd`.
