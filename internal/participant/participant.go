@@ -63,7 +63,19 @@ func (service *Service) Run(ctx context.Context) error {
 	ticker := time.NewTicker(service.config.PollInterval)
 	defer ticker.Stop()
 	for {
-		_ = service.PollOnce(ctx)
+		err := service.PollOnce(ctx)
+		var apiError *ghapi.APIError
+		if errors.As(err, &apiError) && apiError.RateLimitReset.After(time.Now()) {
+			reset := time.NewTimer(time.Until(apiError.RateLimitReset.Add(time.Second)))
+			select {
+			case <-ctx.Done():
+				reset.Stop()
+				return nil
+			case <-reset.C:
+			}
+			ticker.Reset(service.config.PollInterval)
+			continue
+		}
 		select {
 		case <-ctx.Done():
 			return nil

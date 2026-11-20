@@ -2,6 +2,9 @@
 
 ## Install a participant
 
+Build with Go 1.27.4 or newer. The module pins this security floor so CI and local
+builds do not select the vulnerable 1.27.0 toolchain from a runner's cache.
+
 1. Download the `linux-amd64` or `windows-amd64` release binary.
 2. Download and extract the matching official GitHub Actions runner into a clean
    template directory. Do not run `config.sh` or `config.cmd`.
@@ -76,6 +79,16 @@ Register-ScheduledTask -TaskName 'GitHub Runner Participant' -Action $action -Tr
 ```
 
 ## Preference and updates
+
+Workflow-list polling revalidates cached responses with GitHub's ETag. Unchanged
+authenticated responses do not consume the primary API quota. The cache is local
+to each participant, bounded in memory, and never used for final job/run authorization
+rechecks or JIT mutations. Permission errors are not replaced with cached results.
+When GitHub reports primary quota exhaustion, the participant waits until its
+reported reset time; cancellation still stops the wait. Other clients sharing the
+same GitHub account can also exhaust that account's quota.
+Assignment monitoring and mutation calls share the client's quota guard, so they
+also fail closed locally instead of continuing to send requests before reset.
 
 Participants do not communicate. A stronger machine normally wins by using a shorter
 `claim_delay`; a slower fallback uses a longer delay. GitHub may still receive
