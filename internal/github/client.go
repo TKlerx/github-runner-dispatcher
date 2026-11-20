@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -97,6 +98,7 @@ type Client struct {
 	apiVersion string
 	token      string
 	httpClient *http.Client
+	quotaReset atomic.Int64
 }
 
 func NewClient(baseURL, apiVersion, token string, httpClient *http.Client) (*Client, error) {
@@ -306,8 +308,22 @@ func (client *Client) repositoryEndpoint(repository Repository, suffix ...string
 }
 
 func (client *Client) doJSON(ctx context.Context, method string, endpoint *url.URL, body, destination any) (http.Header, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if reset := time.Unix(client.quotaReset.Load(), 0); reset.After(time.Now()) {
+		return nil, &APIError{Method: method, Path: endpoint.EscapedPath(), StatusCode: http.StatusForbidden, RateLimitReset: reset}
+	}
 	for attempt := 0; ; attempt++ {
 		headers, err := client.doJSONOnce(ctx, method, endpoint, body, destination)
+		var quota *APIError
+		if errors.As(err, &quota) && !quota.RateLimitReset.IsZero() {
+			for previous := client.quotaReset.Load(); quota.RateLimitReset.Unix() > previous; previous = client.quotaReset.Load() {
+				if client.quotaReset.CompareAndSwap(previous, quota.RateLimitReset.Unix()) {
+					break
+				}
+			}
+		}
 		if err == nil || attempt >= 2 {
 			return headers, err
 		}

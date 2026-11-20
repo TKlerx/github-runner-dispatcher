@@ -64,8 +64,8 @@ func (cache *workflowPollCache) RoundTrip(request *http.Request) (*http.Response
 	if etag := response.Header.Get("ETag"); etag != "" && len(data) <= 1<<20 && json.Valid(data) {
 		// ponytail: bounded per-client cache; eviction only costs a fresh response.
 		if len(cache.entries) >= 128 {
-			for oldest := range cache.entries {
-				delete(cache.entries, oldest)
+			for evicted := range cache.entries {
+				delete(cache.entries, evicted)
 				break
 			}
 		}

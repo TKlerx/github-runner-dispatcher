@@ -87,6 +87,8 @@ rechecks or JIT mutations. Permission errors are not replaced with cached result
 When GitHub reports primary quota exhaustion, the participant waits until its
 reported reset time; cancellation still stops the wait. Other clients sharing the
 same GitHub account can also exhaust that account's quota.
+Assignment monitoring and mutation calls share the client's quota guard, so they
+also fail closed locally instead of continuing to send requests before reset.
 
 Participants do not communicate. A stronger machine normally wins by using a shorter
 `claim_delay`; a slower fallback uses a longer delay. GitHub may still receive

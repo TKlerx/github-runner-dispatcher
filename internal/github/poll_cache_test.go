@@ -144,6 +144,16 @@ func TestPrimaryQuotaFailureReturnsResetWithoutEarlyRetry(t *testing.T) {
 	if !errors.As(err, &apiError) || apiError.RateLimitReset.Unix() != reset || calls.Load() != 1 {
 		t.Fatalf("quota failure = %v, calls=%d", err, calls.Load())
 	}
+	// Assignment monitoring and mutations share the same credential budget.
+	_, err = client.GetJob(context.Background(), Repository{"TKlerx", "repo"}, 7)
+	if !errors.As(err, &apiError) || apiError.RateLimitReset.Unix() != reset || calls.Load() != 1 {
+		t.Fatalf("another caller retried before reset: %v, calls=%d", err, calls.Load())
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := client.GetJob(ctx, Repository{"TKlerx", "repo"}, 7); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancellation while throttled = %v", err)
+	}
 }
 
 func TestLargeWorkflowResponsesAreNotRetained(t *testing.T) {
