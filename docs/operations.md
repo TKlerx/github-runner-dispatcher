@@ -77,6 +77,14 @@ Register-ScheduledTask -TaskName 'GitHub Runner Participant' -Action $action -Tr
 
 ## Preference and updates
 
+Workflow-list polling revalidates cached responses with GitHub's ETag. Unchanged
+authenticated responses do not consume the primary API quota. The cache is local
+to each participant, bounded in memory, and never used for final job/run authorization
+rechecks or JIT mutations. Permission errors are not replaced with cached results.
+When GitHub reports primary quota exhaustion, the participant waits until its
+reported reset time; cancellation still stops the wait. Other clients sharing the
+same GitHub account can also exhaust that account's quota.
+
 Participants do not communicate. A stronger machine normally wins by using a shorter
 `claim_delay`; a slower fallback uses a longer delay. GitHub may still receive
 redundant compatible JIT runners during a race, but it assigns a job only once and

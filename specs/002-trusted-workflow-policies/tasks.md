@@ -78,6 +78,8 @@
 
 ## Dependencies & Execution Order
 
+- [x] T013 Fix repeated quota exhaustion: conditionally revalidate bounded workflow-list responses, preserve fresh final authorization calls, respect primary quota reset, and cover paging, changed metadata, permission failure, concurrency and cancellation.
+
 - T002 and T003 establish the data boundary and must precede policy integration.
 - T004 depends on T002 and T003; T005 depends on T004.
 - T006 depends on T005; T007 depends on T002 and T003.

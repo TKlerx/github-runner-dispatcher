@@ -74,16 +74,20 @@ type JITConfig struct {
 }
 
 type APIError struct {
-	Method     string
-	Path       string
-	StatusCode int
-	RequestID  string
+	Method         string
+	Path           string
+	StatusCode     int
+	RequestID      string
+	RateLimitReset time.Time
 }
 
 func (err *APIError) Error() string {
 	message := fmt.Sprintf("GitHub API %s %s returned %d", err.Method, err.Path, err.StatusCode)
 	if err.RequestID != "" {
 		message += " (request " + err.RequestID + ")"
+	}
+	if !err.RateLimitReset.IsZero() {
+		message += " (rate limited until " + err.RateLimitReset.UTC().Format(time.RFC3339) + ")"
 	}
 	return message
 }
@@ -110,6 +114,11 @@ func NewClient(baseURL, apiVersion, token string, httpClient *http.Client) (*Cli
 		httpClient = &http.Client{}
 	}
 	clientCopy := *httpClient
+	baseTransport := clientCopy.Transport
+	if baseTransport == nil {
+		baseTransport = http.DefaultTransport
+	}
+	clientCopy.Transport = &workflowPollCache{base: baseTransport, entries: make(map[string]cachedRuns)}
 	if clientCopy.Timeout == 0 {
 		clientCopy.Timeout = 30 * time.Second
 	}
@@ -350,10 +359,11 @@ func (client *Client) doJSONOnce(ctx context.Context, method string, endpoint *u
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 64<<10))
 		return response.Header.Clone(), &APIError{
-			Method:     method,
-			Path:       endpoint.EscapedPath(),
-			StatusCode: response.StatusCode,
-			RequestID:  response.Header.Get("X-GitHub-Request-Id"),
+			Method:         method,
+			Path:           endpoint.EscapedPath(),
+			StatusCode:     response.StatusCode,
+			RequestID:      response.Header.Get("X-GitHub-Request-Id"),
+			RateLimitReset: primaryRateLimitReset(response.StatusCode, response.Header),
 		}
 	}
 	if destination != nil {
@@ -383,6 +393,9 @@ func retryDelay(err error, headers http.Header, attempt int) (time.Duration, boo
 	if !errors.As(err, &apiError) {
 		return 0, false
 	}
+	if !apiError.RateLimitReset.IsZero() {
+		return 0, false // The participant waits until reset instead of retrying early.
+	}
 	retry := apiError.StatusCode == http.StatusTooManyRequests || apiError.StatusCode >= 500
 	if apiError.StatusCode == http.StatusForbidden && (headers.Get("Retry-After") != "" || headers.Get("X-RateLimit-Remaining") == "0") {
 		retry = true
@@ -403,6 +416,17 @@ func retryDelay(err error, headers http.Header, attempt int) (time.Duration, boo
 		delay = 30 * time.Second
 	}
 	return delay, true
+}
+
+func primaryRateLimitReset(status int, headers http.Header) time.Time {
+	if (status != http.StatusForbidden && status != http.StatusTooManyRequests) || headers.Get("X-RateLimit-Remaining") != "0" {
+		return time.Time{}
+	}
+	reset, err := strconv.ParseInt(headers.Get("X-RateLimit-Reset"), 10, 64)
+	if err != nil || reset <= 0 {
+		return time.Time{}
+	}
+	return time.Unix(reset, 0)
 }
 
 func (client *Client) nextPage(current *url.URL, header string) (*url.URL, error) {

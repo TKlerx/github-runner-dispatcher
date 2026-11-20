@@ -81,4 +81,13 @@ Policy matching belongs in `participant`; YAML mutation reuses `setup`'s atomic 
 
 ## Complexity Tracking
 
+### Operational quota correction (2026-11-20)
+
+Repeated idle workflow-list polls exhausted the account's shared REST quota and
+blocked repository onboarding. Reuse native HTTP conditional requests in a bounded,
+per-client memory cache and honor primary quota reset headers. This adds no dependency,
+shared participant coordination, credential access, policy exception or change to
+fresh final authorization. Regression coverage includes pagination, changed server
+metadata, permission failure, concurrent polls, resource bounds and cancellation.
+
 No constitution exception or new abstraction is required.
